@@ -1,0 +1,41 @@
+# Ambiente virtual e arquivos de configuração local
+.venv/
+venv/
+env/
+.env
+.env.*
+
+# Cache e bytecode Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Banco de dados e arquivos locais do Django
+*.sqlite3
+*.sqlite3-journal
+*.sqlite3-wal
+*.sqlite3-shm
+*.log
+media/
+staticfiles/
+
+# Cobertura e empacotamento
+.coverage
+.coverage.*
+htmlcov/
+build/
+dist/
+*.egg-info/
+
+# Editores, sistema operacional e arquivos temporários
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+Desktop.ini
+*.swp
+*.swo
+*.tmp
+*~
