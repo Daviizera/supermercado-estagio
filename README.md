@@ -1,6 +1,6 @@
 # Sistema de Pedidos Online — Supermercado
 
-Projeto acadêmico de estágio em desenvolvimento web: um sistema de pedidos online para supermercado com entrega. Esta entrega corresponde somente à **Semana 1**, com a fundação local em Django e uma página inicial mínima.
+Projeto acadêmico de estágio em desenvolvimento web: um sistema de pedidos online para supermercado com entrega. A aplicação contém a fundação local em Django e a página inicial mínima da **Semana 1**. A **Semana 2** acrescenta a documentação de escopo, requisitos, fluxos e protótipos, sem novas funcionalidades.
 
 Produtos, categorias, carrinho, pedidos, checkout e autenticação serão tratados nas próximas etapas.
 
@@ -68,3 +68,15 @@ A rota `/` renderiza um template Django, com CSS mínimo servido pelos arquivos 
 O banco SQLite fica em `db.sqlite3`, na raiz, e é criado pelas migrations. Não exige instalação de servidor de banco. Esse arquivo, o ambiente `.venv` e os caches locais são ignorados pelo Git.
 
 A infraestrutura padrão do Django permanece instalada, sem rotas de administração ou login, personalizações do Admin ou modelos do domínio do supermercado. A configuração é exclusivamente de desenvolvimento local, com `DEBUG = True` e chave de desenvolvimento definida no projeto; nenhum arquivo `.env` é necessário nesta etapa.
+
+## Semana 2 — Escopo, requisitos e protótipos
+
+A Semana 2 documenta o comportamento esperado da primeira versão antes da modelagem do banco. Os artefatos estão em `docs/semana-02/`:
+
+- [Requisitos, critérios de aceite, semanas futuras e decisões pendentes](docs/semana-02/requisitos.md).
+- [Regras de negócio](docs/semana-02/regras-negocio.md).
+- [Fluxo de compra do cliente](docs/semana-02/fluxo-compra.md).
+- [Fluxo operacional dos pedidos](docs/semana-02/fluxo-pedidos.md).
+- [Protótipos textuais das interfaces](docs/semana-02/prototipos.md).
+
+Os documentos estão disponíveis para revisão; bairros, frete e demais decisões indicadas ainda dependem de validação. Cadastro interno, autenticação, catálogo, carrinho, checkout, operação e acompanhamento continuam previstos para as próximas semanas, sem implementação nesta entrega. A aplicação e as instruções de instalação e execução da Semana 1 permanecem preservadas.
