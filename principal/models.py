@@ -24,6 +24,9 @@ class Categoria(models.Model):
 
 
 class Produto(models.Model):
+    """Mantém os dados atuais do catálogo, separados do histórico dos itens comprados."""
+
+    # A categoria não pode ser excluída enquanto classificar produtos.
     categoria = models.ForeignKey(
         Categoria, on_delete=models.PROTECT, related_name='produtos'
     )
@@ -39,6 +42,7 @@ class Produto(models.Model):
         ordering = ['nome']
         verbose_name = 'produto'
         verbose_name_plural = 'produtos'
+        # Os CHECKs protegem as gravações que não passam por full_clean().
         constraints = [
             models.CheckConstraint(
                 condition=models.Q(preco__gte=0),
@@ -55,6 +59,8 @@ class Produto(models.Model):
 
 
 class EstadoPedido(models.TextChoices):
+    """Define os estados armazenáveis; as transições pertencem à Semana 8."""
+
     RECEBIDO = 'recebido', 'Recebido'
     CONFIRMADO = 'confirmado', 'Confirmado'
     EM_PREPARO = 'em_preparo', 'Em preparo'
@@ -64,6 +70,9 @@ class EstadoPedido(models.TextChoices):
 
 
 class Pedido(models.Model):
+    """Guarda dados de entrega e valores da compra independentemente do cadastro atual."""
+
+    # O cliente é protegido para preservar seu vínculo com pedidos existentes.
     cliente = models.ForeignKey(
         settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name='pedidos'
     )
@@ -73,6 +82,7 @@ class Pedido(models.Model):
     complemento = models.CharField(max_length=150, blank=True)
     bairro = models.CharField(max_length=100)
     telefone = models.CharField(max_length=30)
+    # Totais são informados explicitamente; cálculo e conferência ficam para a Semana 7.
     subtotal = models.DecimalField(
         max_digits=12, decimal_places=2,
         validators=[MinValueValidator(Decimal('0.00'))],
@@ -128,6 +138,9 @@ class Pedido(models.Model):
 
 
 class ItemPedido(models.Model):
+    """Mantém nome, unidade e preço da compra mesmo após alterações no produto."""
+
+    # Pedidos e produtos referenciados são protegidos contra exclusão para manter o histórico.
     pedido = models.ForeignKey(
         Pedido, on_delete=models.PROTECT, related_name='itens'
     )
@@ -148,6 +161,7 @@ class ItemPedido(models.Model):
         verbose_name = 'item de pedido'
         verbose_name_plural = 'itens de pedido'
         constraints = [
+            # PositiveIntegerField aceita zero; o CHECK exige ao menos uma unidade.
             models.CheckConstraint(
                 condition=models.Q(quantidade__gte=1),
                 name='item_quantidade_positiva',

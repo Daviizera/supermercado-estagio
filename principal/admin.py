@@ -3,6 +3,7 @@ from django.contrib import admin
 from .models import Categoria, Produto
 
 
+# Pedidos e itens ficam fora do Admin; sua operação pertence à Semana 8.
 @admin.register(Categoria)
 class CategoriaAdmin(admin.ModelAdmin):
     list_display = ('id', 'nome')

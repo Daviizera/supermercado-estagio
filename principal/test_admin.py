@@ -48,6 +48,8 @@ class CadastroAdminTests(TestCase):
         )
 
     def setUp(self):
+        # Os usuários temporários têm senha inutilizável; force_login() permite
+        # testar autorização sem passar pela autenticação por senha.
         self.client.force_login(self.administrador)
 
     def dados_produto(self, **alteracoes):

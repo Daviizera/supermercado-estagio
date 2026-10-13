@@ -51,6 +51,7 @@ class DadosModelosTests(TestCase):
         self.assertIn(campo, erro.exception.message_dict)
 
     def assert_banco_rejeita(self, objeto, campo, valor):
+        """Isola o erro em um savepoint para manter utilizável a transação do teste."""
         # update() não chama full_clean(): a rejeição deve vir do banco.
         with self.assertRaises(IntegrityError):
             with transaction.atomic():
