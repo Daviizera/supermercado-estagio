@@ -1,0 +1,17 @@
+{% extends 'base.html' %}
+
+{% block title %}Login — Sistema de Pedidos Online{% endblock %}
+
+{% block content %}
+<h1>Login</h1>
+<p>Entre com seu nome de usuário e sua senha.</p>
+<form method="post" action="{% url 'principal:login' %}" class="form-conta">
+    {% csrf_token %}
+    {{ form.as_div }}
+    {% if next %}
+        <input type="hidden" name="next" value="{{ next }}">
+    {% endif %}
+    <button type="submit">Entrar</button>
+</form>
+<p>Ainda não tem uma conta? <a href="{% url 'principal:cadastro' %}">Cadastre-se</a>.</p>
+{% endblock %}

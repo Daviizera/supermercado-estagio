@@ -1,0 +1,14 @@
+{% extends 'base.html' %}
+
+{% block title %}Cadastro — Sistema de Pedidos Online{% endblock %}
+
+{% block content %}
+<h1>Criar conta</h1>
+<p>Escolha um nome de usuário e uma senha para acessar sua conta.</p>
+<form method="post" action="{% url 'principal:cadastro' %}" class="form-conta">
+    {% csrf_token %}
+    {{ form.as_div }}
+    <button type="submit">Cadastrar</button>
+</form>
+<p>Já tem uma conta? <a href="{% url 'principal:login' %}">Fazer login</a>.</p>
+{% endblock %}

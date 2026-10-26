@@ -8,7 +8,30 @@
     <link rel="stylesheet" href="{% static 'css/estilos.css' %}">
 </head>
 <body>
+    <header>
+        <nav aria-label="Navegação principal">
+            <a href="{% url 'principal:inicio' %}">Início</a>
+            {% if request.user.is_authenticated %}
+                <a href="{% url 'principal:minha_conta' %}">Minha conta</a>
+                <span>Usuário: {{ request.user.get_username }}</span>
+                <form method="post" action="{% url 'principal:logout' %}">
+                    {% csrf_token %}
+                    <button type="submit">Sair</button>
+                </form>
+            {% else %}
+                <a href="{% url 'principal:login' %}">Login</a>
+                <a href="{% url 'principal:cadastro' %}">Cadastro</a>
+            {% endif %}
+        </nav>
+    </header>
     <main>
+        {% if messages %}
+            <ul class="mensagens" aria-live="polite">
+                {% for message in messages %}
+                    <li>{{ message }}</li>
+                {% endfor %}
+            </ul>
+        {% endif %}
         {% block content %}{% endblock %}
     </main>
 </body>

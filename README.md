@@ -1,8 +1,8 @@
 # Sistema de Pedidos Online — Supermercado
 
-Projeto acadêmico de estágio em desenvolvimento web: um sistema de pedidos online para supermercado com entrega. A aplicação contém a fundação local em Django e a página inicial mínima da **Semana 1**. A **Semana 2** acrescenta a documentação de escopo, requisitos, fluxos e protótipos. A **Semana 3** implementa a modelagem de dados e o cadastro interno de categorias e produtos pelo Django Admin.
+Projeto acadêmico de estágio em desenvolvimento web: um sistema de pedidos online para supermercado com entrega. A aplicação contém a fundação local em Django e a página inicial mínima da **Semana 1**. A **Semana 2** acrescenta a documentação de escopo, requisitos, fluxos e protótipos. A **Semana 3** implementa a modelagem de dados e o cadastro interno de categorias e produtos pelo Django Admin. A **Semana 4** acrescenta cadastro, login, logout e uma área autenticada mínima para clientes.
 
-Catálogo público, contas de clientes, carrinho, checkout e operação de pedidos continuam previstos para as próximas etapas.
+Catálogo público, carrinho, checkout e operação de pedidos continuam previstos para as próximas etapas.
 
 ## Pré-requisitos
 
@@ -53,12 +53,18 @@ Sem ativação, substitua `python` por `.\.venv\Scripts\python.exe` nesses coman
 ```text
 manage.py
 supermercado/                 # Configuração do projeto Django
-principal/                   # Página inicial, modelos, Admin, migrations e testes
+principal/                   # Página inicial, autenticação, modelos, Admin e testes
+    migrations/0001_initial.py
+    test_auth.py
 docs/semana-02/               # Requisitos, regras, fluxos e protótipos
 docs/semana-03/               # Documentação da modelagem de dados
+docs/semana-04/               # Documentação da autenticação de clientes
 templates/
     base.html
     principal/inicio.html
+    principal/minha_conta.html
+    registration/cadastro.html
+    registration/login.html
 static/css/estilos.css
 requirements.txt
 .gitignore
@@ -111,4 +117,30 @@ Para utilizar o cadastro interno manualmente, crie seu próprio superusuário lo
 
 Acesse <http://127.0.0.1:8000/admin/> e entre com as credenciais que você definiu. Nenhuma credencial fixa é fornecida pelo projeto. A rota <http://127.0.0.1:8000/> continua exibindo a página inicial da Semana 1.
 
-As decisões D-001 a D-007 da Semana 2 continuam sujeitas à validação registrada nos documentos. O uso do Admin foi solicitado para esta implementação; isso não representa aprovação do supervisor nem definição dos dados comerciais. Não há catálogo público, autenticação pública de clientes, carrinho, checkout ou gerenciamento operacional de pedidos nesta entrega.
+As decisões D-001 a D-007 da Semana 2 continuam sujeitas à validação registrada nos documentos. O uso do Admin foi solicitado para esta implementação; isso não representa aprovação do supervisor nem definição dos dados comerciais. Na entrega da Semana 3, ainda não havia catálogo público, autenticação pública de clientes, carrinho, checkout ou gerenciamento operacional de pedidos.
+
+## Semana 4 — Conta do cliente e autenticação
+
+O cadastro utiliza `UserCreationForm` e o usuário padrão do Django. São solicitados apenas nome de usuário, senha e confirmação. Um cadastro válido cria uma conta comum, sem acesso administrativo, informa o sucesso e redireciona para o login; não autentica automaticamente. Senhas passam pelos validadores e pelo armazenamento de hashes nativos do Django.
+
+| Rota | Comportamento |
+| --- | --- |
+| `/` | Página inicial com navegação conforme a sessão. |
+| `/cadastro/` | Exibe o formulário e recebe o cadastro por POST. |
+| `/login/` | Exibe o formulário e autentica por POST; o destino padrão é `/minha-conta/`. |
+| `/minha-conta/` | Exibe somente a identificação do usuário da sessão; visitantes são encaminhados ao login. |
+| `/logout/` | Encerra a sessão exclusivamente por POST com CSRF e retorna à página inicial. GET não encerra a sessão. |
+| `/admin/` | Cadastro interno existente, com autenticação e permissões administrativas preservadas. |
+
+Para demonstrar o fluxo, inicie o servidor, abra `/cadastro/`, defina suas próprias credenciais e conclua o cadastro. Entre em `/login/`, confira a identificação em `/minha-conta/` e utilize o botão **Sair**. Depois do logout, acessar a área privada exige novo login. O cadastro manual cria um usuário no seu banco local; os testes automatizados usam exclusivamente o banco temporário do Django.
+
+Execute a suíte específica e, para verificar as semanas anteriores, a suíte completa:
+
+```powershell
+.\.venv\Scripts\python.exe manage.py test principal.test_auth
+.\.venv\Scripts\python.exe manage.py test
+```
+
+A [documentação da autenticação](docs/semana-04/autenticacao-clientes.md) descreve formulários, sessões, validações, segurança, critérios de aceite e limites. A integração da autorização com checkout e pedidos depende das Semanas 7 e 8; essas rotas ainda não existem. Não foram adicionados modelos, migrations ou dependências nesta etapa.
+
+Na validação da Semana 4, os 61 testes passaram: 37 das etapas anteriores e 24 novos de autenticação. Os testes verificam também CSRF, isolamento entre sessões, redirecionamentos seguros e preservação das permissões administrativas.

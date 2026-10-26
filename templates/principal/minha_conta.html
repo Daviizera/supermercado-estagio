@@ -1,0 +1,10 @@
+{% extends 'base.html' %}
+
+{% block title %}Minha conta — Sistema de Pedidos Online{% endblock %}
+
+{% block content %}
+<h1>Minha conta</h1>
+<p>Olá, <strong>{{ request.user.get_username }}</strong>.</p>
+<p>Sua sessão está ativa.</p>
+<p><a href="{% url 'principal:inicio' %}">Voltar à página inicial</a></p>
+{% endblock %}
