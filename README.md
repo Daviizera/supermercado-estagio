@@ -1,8 +1,8 @@
 # Sistema de Pedidos Online — Supermercado
 
-Projeto acadêmico de estágio em desenvolvimento web: um sistema de pedidos online para supermercado com entrega. A aplicação contém a fundação local em Django e a página inicial mínima da **Semana 1**. A **Semana 2** acrescenta a documentação de escopo, requisitos, fluxos e protótipos. A **Semana 3** implementa a modelagem de dados e o cadastro interno de categorias e produtos pelo Django Admin. A **Semana 4** acrescenta cadastro, login, logout e uma área autenticada mínima para clientes. A **Semana 5** oferece o catálogo público de produtos ativos, com pesquisa, filtro por categoria e detalhes.
+Projeto acadêmico de estágio em desenvolvimento web: um sistema de pedidos online para supermercado com entrega. A aplicação contém a fundação local em Django e a página inicial mínima da **Semana 1**. A **Semana 2** acrescenta a documentação de escopo, requisitos, fluxos e protótipos. A **Semana 3** implementa a modelagem de dados e o cadastro interno de categorias e produtos pelo Django Admin. A **Semana 4** acrescenta cadastro, login, logout e uma área autenticada mínima para clientes. A **Semana 5** oferece o catálogo público de produtos ativos, com pesquisa, filtro por categoria e detalhes. A **Semana 6** acrescenta o carrinho de compras da sessão, com quantidades, remoção de itens e subtotal calculado no servidor.
 
-Carrinho, checkout e operação de pedidos continuam previstos para as próximas etapas.
+Checkout e operação de pedidos continuam previstos para as próximas etapas.
 
 ## Pré-requisitos
 
@@ -53,21 +53,25 @@ Sem ativação, substitua `python` por `.\.venv\Scripts\python.exe` nesses coman
 ```text
 manage.py
 supermercado/                 # Configuração do projeto Django
-principal/                   # Página inicial, autenticação, catálogo, modelos e Admin
-    forms.py                 # Validação dos filtros do catálogo
+principal/                   # Página inicial, autenticação, catálogo, carrinho, modelos e Admin
+    carrinho.py              # Carrinho da sessão e cálculo dos valores
+    forms.py                 # Validação dos filtros do catálogo e das quantidades
     migrations/0001_initial.py
     test_auth.py
     test_catalogo.py
+    test_carrinho.py
 docs/semana-02/               # Requisitos, regras, fluxos e protótipos
 docs/semana-03/               # Documentação da modelagem de dados
 docs/semana-04/               # Documentação da autenticação de clientes
 docs/semana-05/               # Documentação do catálogo público
+docs/semana-06/               # Documentação do carrinho de compras
 templates/
     base.html
     principal/inicio.html
     principal/minha_conta.html
     principal/catalogo.html
     principal/detalhe_produto.html
+    principal/carrinho.html
     registration/cadastro.html
     registration/login.html
 static/css/estilos.css
@@ -170,3 +174,24 @@ Para verificar o catálogo e a regressão das semanas anteriores, execute:
 Os testes utilizam exclusivamente o banco temporário do Django. Não foram adicionados modelos, migrations ou dependências. Autenticação e permissões administrativas permanecem preservadas; carrinho, checkout e pedidos públicos não fazem parte desta entrega.
 
 Na validação final da retomada em 28/10/2026, os **86 testes passaram**: 61 das semanas anteriores e 25 de catálogo. `check`, `makemigrations --check --dry-run`, `migrate` e `pip check` passaram, sem migrations pendentes ou alterações no SQLite local. O relatório e a correção do dado fictício de unidade usado no teste do Admin estão na [documentação da Semana 5](docs/semana-05/catalogo-produtos.md#validação-final-da-retomada--28102026).
+
+## Semana 6 — Carrinho de compras
+
+Visitantes e clientes autenticados podem adicionar produtos ativos pelo catálogo ou pelos detalhes do produto, informando a quantidade (inicialmente 1), e consultar o carrinho em <http://127.0.0.1:8000/carrinho/> pelo link **Carrinho** da navegação. O carrinho mostra produto, unidade, preço unitário, quantidade, valor de cada item e subtotal, e permite atualizar a quantidade ou remover cada item.
+
+O carrinho pertence à sessão do Django: guarda somente identificadores de produtos e quantidades, sem preços. Nome, preço e disponibilidade são lidos do banco a cada visualização; por isso, alterações feitas no Django Admin aparecem na próxima consulta. Os valores são calculados no servidor com `Decimal`, e valores enviados pelo navegador são ignorados. O login preserva o carrinho; o logout limpa a sessão e, com ela, o carrinho.
+
+A quantidade deve ser um inteiro positivo escrito somente com dígitos: zero, negativos, frações, `2.0`, texto e campo vazio são rejeitados, mantendo a quantidade anterior. Zero não remove itens; a remoção é uma ação própria. Adicionar novamente um produto soma a quantidade na mesma linha. Produto desativado ou excluído depois da inclusão permanece identificado como indisponível até ser removido, com a mensagem **“Há produto indisponível no carrinho. Remova o item para continuar.”**. Adicionar, atualizar e remover usam POST com proteção CSRF.
+
+Checkout, taxa de entrega, total, pagamento e criação de pedidos não fazem parte desta entrega. Não foram adicionados modelos, migrations ou dependências. As decisões técnicas provisórias, os pontos que dependem do supervisor e o risco de capacidade dos campos de valor do pedido para a Semana 7 estão na [documentação do carrinho](docs/semana-06/carrinho-compras.md).
+
+Para verificar o carrinho e a regressão das semanas anteriores, execute:
+
+```powershell
+.\.venv\Scripts\python.exe manage.py test principal.test_carrinho
+.\.venv\Scripts\python.exe manage.py test
+```
+
+Após a auditoria técnica da Semana 6, o serviço do carrinho passou a validar as próprias entradas, quantidades com qualquer número de dígitos resultam em erro de validação e dados de sessão malformados são exibidos com aviso, sem erro interno e sem que a visualização reescreva a sessão. A documentação registra também a limitação de concorrência de requisições simultâneas na mesma sessão.
+
+Na validação final da Semana 6, os **145 testes passaram**: 86 das semanas anteriores e 59 do carrinho. `check`, `makemigrations --check --dry-run`, `pip check` e `git diff --check` não apontaram problemas, e o SQLite local permaneceu inalterado.

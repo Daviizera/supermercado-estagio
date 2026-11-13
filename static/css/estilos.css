@@ -110,3 +110,44 @@ select:focus-visible {
     padding: 1rem 0;
     border-bottom: 1px solid #64766a;
 }
+
+.form-quantidade label {
+    display: block;
+    font-weight: bold;
+}
+
+.form-quantidade input {
+    box-sizing: border-box;
+    width: 8rem;
+    max-width: 100%;
+    margin: 0.25rem 0 0.5rem;
+    padding: 0.6rem;
+    border: 1px solid #64766a;
+    border-radius: 0.25rem;
+    font: inherit;
+}
+
+/* A tabela rola dentro do próprio contêiner, sem rolagem horizontal da página. */
+.tabela-rolagem {
+    overflow-x: auto;
+}
+
+.tabela-carrinho {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.tabela-carrinho th,
+.tabela-carrinho td {
+    padding: 0.75rem 0.5rem;
+    border-bottom: 1px solid #64766a;
+    text-align: left;
+    vertical-align: top;
+}
+
+.aviso-carrinho {
+    padding: 1rem;
+    border: 1px solid #a12121;
+    color: #a12121;
+    background-color: #fbeaea;
+}

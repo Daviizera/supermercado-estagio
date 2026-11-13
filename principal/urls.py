@@ -9,6 +9,10 @@ urlpatterns = [
     path('', views.inicio, name='inicio'),
     path('catalogo/', views.catalogo, name='catalogo'),
     path('produtos/<int:pk>/', views.detalhe_produto, name='detalhe_produto'),
+    path('carrinho/', views.carrinho, name='carrinho'),
+    path('carrinho/adicionar/<int:pk>/', views.adicionar_ao_carrinho, name='adicionar_ao_carrinho'),
+    path('carrinho/atualizar/<int:pk>/', views.atualizar_item_carrinho, name='atualizar_item_carrinho'),
+    path('carrinho/remover/<int:pk>/', views.remover_item_carrinho, name='remover_item_carrinho'),
     path('cadastro/', views.cadastro, name='cadastro'),
     path('login/', LoginView.as_view(), name='login'),
     # O logout retorna ao início, sem aceitar destino enviado pelo cliente.

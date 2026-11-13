@@ -1,0 +1,80 @@
+{% extends 'base.html' %}
+
+{% block title %}Carrinho — Sistema de Pedidos Online{% endblock %}
+
+{% block content %}
+<h1>Carrinho de compras</h1>
+
+{% if resumo.possui_inconsistencia %}
+    <div class="aviso-carrinho" role="alert">
+        <p>Alguns dados do carrinho estão inconsistentes e não entram no subtotal.</p>
+        {% if resumo.entradas_ignoradas %}
+            <p>{{ resumo.entradas_ignoradas }} registro(s) do carrinho não puderam ser identificados.</p>
+        {% endif %}
+    </div>
+{% endif %}
+
+{% if resumo.vazio %}
+    <p>Seu carrinho está vazio.</p>
+{% else %}
+    {% if resumo.possui_indisponivel %}
+        <p class="aviso-carrinho" role="alert">Há produto indisponível no carrinho. Remova o item para continuar.</p>
+    {% endif %}
+    <div class="tabela-rolagem">
+        <table class="tabela-carrinho">
+            <thead>
+                <tr>
+                    <th scope="col">Produto / unidade</th>
+                    <th scope="col">Preço unitário</th>
+                    <th scope="col">Quantidade</th>
+                    <th scope="col">Valor do item</th>
+                    <th scope="col">Ação</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in itens %}
+                    {% with linha=item.linha %}
+                    <tr>
+                        <td>
+                            {% if linha.encontrado %}
+                                {{ linha.produto.nome }} — {{ linha.produto.unidade }}
+                            {% else %}
+                                Produto não encontrado (código {{ linha.produto_id }})
+                            {% endif %}
+                            {% if not linha.disponivel %}<br><strong>Indisponível</strong>{% endif %}
+                            {% if not linha.consistente %}<br><strong>Quantidade inválida</strong>{% endif %}
+                        </td>
+                        <td>{% if linha.encontrado %}R$ {{ linha.produto.preco|floatformat:"2" }}{% else %}—{% endif %}</td>
+                        <td>
+                            {% if linha.disponivel %}
+                                <form method="post" action="{% url 'principal:atualizar_item_carrinho' linha.produto_id %}" class="form-quantidade">
+                                    {% csrf_token %}
+                                    {{ item.form.as_div }}
+                                    {% if item.form.errors and linha.consistente %}<p>Quantidade mantida: {{ linha.quantidade }}</p>{% endif %}
+                                    <button type="submit">Atualizar quantidade</button>
+                                </form>
+                            {% elif linha.consistente %}
+                                {{ linha.quantidade }}
+                            {% else %}
+                                —
+                            {% endif %}
+                        </td>
+                        <td>{% if linha.valor is not None %}R$ {{ linha.valor|floatformat:"2" }}{% else %}—{% endif %}</td>
+                        <td>
+                            <form method="post" action="{% url 'principal:remover_item_carrinho' linha.produto_id %}">
+                                {% csrf_token %}
+                                <button type="submit">Remover</button>
+                            </form>
+                        </td>
+                    </tr>
+                    {% endwith %}
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    <p>Subtotal: <strong>R$ {{ resumo.subtotal|floatformat:"2" }}</strong></p>
+    <p>Taxa de entrega informada na etapa de endereço.</p>
+{% endif %}
+
+<p><a href="{% url 'principal:catalogo' %}">Continuar comprando</a></p>
+{% endblock %}

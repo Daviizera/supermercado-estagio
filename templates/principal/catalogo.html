@@ -17,6 +17,12 @@
                 <h2><a href="{% url 'principal:detalhe_produto' produto.pk %}">{{ produto.nome }}</a></h2>
                 <p>Categoria: {{ produto.categoria.nome }}</p>
                 <p><strong>R$ {{ produto.preco|floatformat:"2" }}</strong> — {{ produto.unidade }}</p>
+                <form method="post" action="{% url 'principal:adicionar_ao_carrinho' produto.pk %}" class="form-quantidade">
+                    {% csrf_token %}
+                    <label for="id_quantidade_{{ produto.pk }}">Quantidade</label>
+                    <input type="number" name="quantidade" id="id_quantidade_{{ produto.pk }}" value="1" min="1" step="1" required>
+                    <button type="submit">Adicionar ao carrinho</button>
+                </form>
             </article>
         </li>
     {% empty %}

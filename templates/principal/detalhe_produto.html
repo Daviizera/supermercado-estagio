@@ -12,5 +12,10 @@
     <dt>Unidade</dt>
     <dd>{{ produto.unidade }}</dd>
 </dl>
+<form method="post" action="{% url 'principal:adicionar_ao_carrinho' produto.pk %}" class="form-quantidade">
+    {% csrf_token %}
+    {{ form.as_div }}
+    <button type="submit">Adicionar ao carrinho</button>
+</form>
 <p><a href="{% url 'principal:catalogo' %}">Voltar ao catálogo</a></p>
 {% endblock %}
