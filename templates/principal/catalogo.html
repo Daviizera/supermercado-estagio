@@ -1,0 +1,34 @@
+{% extends 'base.html' %}
+
+{% block title %}Catálogo — Sistema de Pedidos Online{% endblock %}
+
+{% block content %}
+<h1>Catálogo de produtos</h1>
+<form method="get" action="{% url 'principal:catalogo' %}" class="filtros-catalogo">
+    {{ form.as_div }}
+    <button type="submit">Pesquisar</button>
+    <a href="{% url 'principal:catalogo' %}">Limpar filtros</a>
+</form>
+
+<ul class="lista-produtos">
+    {% for produto in produtos %}
+        <li>
+            <article>
+                <h2><a href="{% url 'principal:detalhe_produto' produto.pk %}">{{ produto.nome }}</a></h2>
+                <p>Categoria: {{ produto.categoria.nome }}</p>
+                <p><strong>R$ {{ produto.preco|floatformat:"2" }}</strong> — {{ produto.unidade }}</p>
+            </article>
+        </li>
+    {% empty %}
+        <li>
+            {% if form.errors %}
+                <p>Corrija os filtros para consultar os produtos.</p>
+            {% elif filtros_ativos %}
+                <p>Nenhum produto encontrado para os filtros informados.</p>
+            {% else %}
+                <p>Nenhum produto disponível no momento.</p>
+            {% endif %}
+        </li>
+    {% endfor %}
+</ul>
+{% endblock %}

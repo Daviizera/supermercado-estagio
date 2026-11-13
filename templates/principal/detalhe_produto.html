@@ -1,0 +1,16 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ produto.nome }} — Sistema de Pedidos Online{% endblock %}
+
+{% block content %}
+<h1>{{ produto.nome }}</h1>
+<dl>
+    <dt>Categoria</dt>
+    <dd>{{ produto.categoria.nome }}</dd>
+    <dt>Preço</dt>
+    <dd>R$ {{ produto.preco|floatformat:"2" }}</dd>
+    <dt>Unidade</dt>
+    <dd>{{ produto.unidade }}</dd>
+</dl>
+<p><a href="{% url 'principal:catalogo' %}">Voltar ao catálogo</a></p>
+{% endblock %}

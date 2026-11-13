@@ -1,8 +1,8 @@
 # Sistema de Pedidos Online — Supermercado
 
-Projeto acadêmico de estágio em desenvolvimento web: um sistema de pedidos online para supermercado com entrega. A aplicação contém a fundação local em Django e a página inicial mínima da **Semana 1**. A **Semana 2** acrescenta a documentação de escopo, requisitos, fluxos e protótipos. A **Semana 3** implementa a modelagem de dados e o cadastro interno de categorias e produtos pelo Django Admin. A **Semana 4** acrescenta cadastro, login, logout e uma área autenticada mínima para clientes.
+Projeto acadêmico de estágio em desenvolvimento web: um sistema de pedidos online para supermercado com entrega. A aplicação contém a fundação local em Django e a página inicial mínima da **Semana 1**. A **Semana 2** acrescenta a documentação de escopo, requisitos, fluxos e protótipos. A **Semana 3** implementa a modelagem de dados e o cadastro interno de categorias e produtos pelo Django Admin. A **Semana 4** acrescenta cadastro, login, logout e uma área autenticada mínima para clientes. A **Semana 5** oferece o catálogo público de produtos ativos, com pesquisa, filtro por categoria e detalhes.
 
-Catálogo público, carrinho, checkout e operação de pedidos continuam previstos para as próximas etapas.
+Carrinho, checkout e operação de pedidos continuam previstos para as próximas etapas.
 
 ## Pré-requisitos
 
@@ -53,16 +53,21 @@ Sem ativação, substitua `python` por `.\.venv\Scripts\python.exe` nesses coman
 ```text
 manage.py
 supermercado/                 # Configuração do projeto Django
-principal/                   # Página inicial, autenticação, modelos, Admin e testes
+principal/                   # Página inicial, autenticação, catálogo, modelos e Admin
+    forms.py                 # Validação dos filtros do catálogo
     migrations/0001_initial.py
     test_auth.py
+    test_catalogo.py
 docs/semana-02/               # Requisitos, regras, fluxos e protótipos
 docs/semana-03/               # Documentação da modelagem de dados
 docs/semana-04/               # Documentação da autenticação de clientes
+docs/semana-05/               # Documentação do catálogo público
 templates/
     base.html
     principal/inicio.html
     principal/minha_conta.html
+    principal/catalogo.html
+    principal/detalhe_produto.html
     registration/cadastro.html
     registration/login.html
 static/css/estilos.css
@@ -144,3 +149,24 @@ Execute a suíte específica e, para verificar as semanas anteriores, a suíte c
 A [documentação da autenticação](docs/semana-04/autenticacao-clientes.md) descreve formulários, sessões, validações, segurança, critérios de aceite e limites. A integração da autorização com checkout e pedidos depende das Semanas 7 e 8; essas rotas ainda não existem. Não foram adicionados modelos, migrations ou dependências nesta etapa.
 
 Na validação da Semana 4, os 61 testes passaram: 37 das etapas anteriores e 24 novos de autenticação. Os testes verificam também CSRF, isolamento entre sessões, redirecionamentos seguros e preservação das permissões administrativas.
+
+## Semana 5 — Catálogo de produtos
+
+Visitantes e clientes autenticados podem abrir <http://127.0.0.1:8000/catalogo/> pelo link **Catálogo** da navegação. A lista mostra somente produtos ativos, com nome, categoria, preço em reais, unidade e acesso aos detalhes em `/produtos/<id>/`. Produtos inativos ou inexistentes retornam HTTP 404 na consulta de detalhes.
+
+Use o campo de pesquisa para buscar parte do nome e selecione uma categoria para combinar os filtros. Limpar apenas o texto mantém a categoria; selecionar **Todas as categorias** remove apenas esse filtro. O link **Limpar filtros** retorna ao catálogo completo. As consultas usam GET e não alteram os produtos.
+
+A busca usa `icontains` do Django: ignora diferenças entre maiúsculas e minúsculas em caracteres ASCII, mas o SQLite possui limitações para caracteres fora desse conjunto e não há remoção de acentos. Categoria inexistente ou inválida e pesquisa com mais de 150 caracteres mostram erro de validação, sem listar produtos. Os detalhes dessas decisões estão na [documentação do catálogo](docs/semana-05/catalogo-produtos.md).
+
+Os produtos são os mesmos mantidos pelo Django Admin da Semana 3. Alterações de nome, preço, unidade, categoria e disponibilidade aparecem nas consultas seguintes. Nenhum dado comercial de demonstração é criado automaticamente; se não houver produtos ativos, a página informa **“Nenhum produto disponível no momento.”**.
+
+Para verificar o catálogo e a regressão das semanas anteriores, execute:
+
+```powershell
+.\.venv\Scripts\python.exe manage.py test principal.test_catalogo
+.\.venv\Scripts\python.exe manage.py test
+```
+
+Os testes utilizam exclusivamente o banco temporário do Django. Não foram adicionados modelos, migrations ou dependências. Autenticação e permissões administrativas permanecem preservadas; carrinho, checkout e pedidos públicos não fazem parte desta entrega.
+
+Na validação final da retomada em 28/10/2026, os **86 testes passaram**: 61 das semanas anteriores e 25 de catálogo. `check`, `makemigrations --check --dry-run`, `migrate` e `pip check` passaram, sem migrations pendentes ou alterações no SQLite local. O relatório e a correção do dado fictício de unidade usado no teste do Admin estão na [documentação da Semana 5](docs/semana-05/catalogo-produtos.md#validação-final-da-retomada--28102026).

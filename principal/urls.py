@@ -7,6 +7,8 @@ app_name = 'principal'
 
 urlpatterns = [
     path('', views.inicio, name='inicio'),
+    path('catalogo/', views.catalogo, name='catalogo'),
+    path('produtos/<int:pk>/', views.detalhe_produto, name='detalhe_produto'),
     path('cadastro/', views.cadastro, name='cadastro'),
     path('login/', LoginView.as_view(), name='login'),
     # O logout retorna ao início, sem aceitar destino enviado pelo cliente.
