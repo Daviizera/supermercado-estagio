@@ -3,8 +3,10 @@ from functools import wraps
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.forms import UserCreationForm
+from django.contrib.auth.views import LoginView
 from django.http import Http404
 from django.shortcuts import get_object_or_404, redirect, render
+from django.urls import reverse
 from django.views.decorators.cache import never_cache
 from django.views.decorators.debug import sensitive_post_parameters
 from django.views.decorators.http import require_http_methods, require_POST, require_safe
@@ -20,6 +22,8 @@ from .forms import (
 )
 from .models import EstadoPedido, Pedido, Produto
 
+MENSAGEM_PEDIDO_NAO_ENCONTRADO = 'Pedido não encontrado ou acesso não permitido.'
+MENSAGEM_ENTRE_PARA_PEDIDOS = 'Entre para consultar seus pedidos.'
 MENSAGEM_PRODUTO_INDISPONIVEL = 'Este produto não está disponível.'
 MENSAGEM_ITEM_AUSENTE = 'Este item não está no carrinho.'
 MENSAGEM_ITEM_INCONSISTENTE = (
@@ -38,6 +42,21 @@ def _erro_de_quantidade(form, erro):
 
 def inicio(request):
     return render(request, 'principal/inicio.html')
+
+
+class EntrarView(LoginView):
+    """Login nativo; acrescenta a mensagem da Tela 6 quando o destino é Meus pedidos.
+
+    O destino comparado é o já validado pelo Django (get_redirect_url aplica
+    url_has_allowed_host_and_scheme): um next externo resulta em '' e não exibe a mensagem.
+    A mensagem vai no contexto, não no framework de mensagens, para não se acumular.
+    """
+
+    def get_context_data(self, **kwargs):
+        contexto = super().get_context_data(**kwargs)
+        if self.get_redirect_url() == reverse('principal:meus_pedidos'):
+            contexto['aviso_destino'] = MENSAGEM_ENTRE_PARA_PEDIDOS
+        return contexto
 
 
 @sensitive_post_parameters('password1', 'password2')
@@ -214,6 +233,18 @@ def _render_checkout(request, *, form=None, base=None, revisao=None, conteudo_an
     return render(request, 'principal/checkout.html', contexto)
 
 
+def _entrega_enviada(request):
+    """Formulário vinculado aos dados de entrega do POST, ou None se a entrega não está disponível.
+
+    Contém somente os campos de endereço; valores e revisão continuam calculados no servidor.
+    """
+    try:
+        configuracao = servico_checkout.obter_configuracao()
+    except servico_checkout.CheckoutIndisponivel:
+        return None
+    return EntregaForm(request.POST, configuracao=configuracao)
+
+
 @login_required
 @never_cache
 @require_http_methods(['GET', 'HEAD', 'POST'])
@@ -229,7 +260,8 @@ def checkout(request):
         existente = servico_checkout.pedido_da_tentativa(request.user, lida.base, lida.chave)
     except servico_checkout.ErroCheckout as erro:
         messages.error(request, erro.mensagem)
-        return _render_checkout(request)
+        # Nova revisão calculada no servidor, preservando o endereço digitado (RNF-005).
+        return _render_checkout(request, form=_entrega_enviada(request))
     if existente is not None:
         return redirect('principal:confirmacao_pedido', pk=existente.pk)
 
@@ -277,10 +309,14 @@ def _itens_com_valor(pedido):
 
 
 def _render_pedido_do_cliente(request, pk, titulo):
-    # A consulta filtra pelo usuário da sessão: pedido de outro cliente resulta em 404.
-    pedido = get_object_or_404(
-        Pedido.objects.prefetch_related('itens'), pk=pk, cliente=request.user,
-    )
+    # A consulta filtra pelo usuário da sessão. Pedido inexistente ou de outro cliente recebe a
+    # mesma resposta 404, sem dados e sem distinguir os dois casos (Tela 6).
+    pedido = Pedido.objects.prefetch_related('itens').filter(pk=pk, cliente=request.user).first()
+    if pedido is None:
+        return render(
+            request, 'principal/pedido_nao_encontrado.html',
+            {'mensagem': MENSAGEM_PEDIDO_NAO_ENCONTRADO}, status=404,
+        )
     return render(request, 'principal/confirmacao_pedido.html', {
         'pedido': pedido, 'itens': _itens_com_valor(pedido), 'titulo': titulo,
     })

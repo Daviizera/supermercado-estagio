@@ -1,6 +1,6 @@
 # Sistema de Pedidos Online — Supermercado
 
-Projeto acadêmico de estágio em desenvolvimento web: um sistema de pedidos online para supermercado com entrega. A aplicação contém a fundação local em Django e a página inicial mínima da **Semana 1**. A **Semana 2** acrescenta a documentação de escopo, requisitos, fluxos e protótipos. A **Semana 3** implementa a modelagem de dados e o cadastro interno de categorias e produtos pelo Django Admin. A **Semana 4** acrescenta cadastro, login, logout e uma área autenticada mínima para clientes. A **Semana 5** oferece o catálogo público de produtos ativos, com pesquisa, filtro por categoria e detalhes. A **Semana 6** acrescenta o carrinho de compras da sessão, com quantidades, remoção de itens e subtotal calculado no servidor. A **Semana 7** implementa a finalização da compra: endereço, bairro atendido, taxa fixa, limite de valor, revisão dos valores e registro atômico e idempotente do pedido, com pagamento na entrega. A **Semana 8** oferece o painel próprio de gerenciamento de pedidos para a equipe autorizada, com as transições de estado documentadas, e a consulta e o acompanhamento dos próprios pedidos pelos clientes.
+Projeto acadêmico de estágio em desenvolvimento web: um sistema de pedidos online para supermercado com entrega. A aplicação contém a fundação local em Django e a página inicial mínima da **Semana 1**. A **Semana 2** acrescenta a documentação de escopo, requisitos, fluxos e protótipos. A **Semana 3** implementa a modelagem de dados e o cadastro interno de categorias e produtos pelo Django Admin. A **Semana 4** acrescenta cadastro, login, logout e uma área autenticada mínima para clientes. A **Semana 5** oferece o catálogo público de produtos ativos, com pesquisa, filtro por categoria e detalhes. A **Semana 6** acrescenta o carrinho de compras da sessão, com quantidades, remoção de itens e subtotal calculado no servidor. A **Semana 7** implementa a finalização da compra: endereço, bairro atendido, taxa fixa, limite de valor, revisão dos valores e registro atômico e idempotente do pedido, com pagamento na entrega. A **Semana 8** oferece o painel próprio de gerenciamento de pedidos para a equipe autorizada, com as transições de estado documentadas, e a consulta e o acompanhamento dos próprios pedidos pelos clientes. A **Semana 9** audita a aplicação e a suíte automatizada, corrige as falhas encontradas e registra os resultados dos testes.
 
 As etapas seguintes do plano de estágio continuam previstas para as próximas semanas.
 
@@ -67,6 +67,7 @@ principal/                   # Página inicial, autenticação, catálogo, carri
     test_carrinho.py
     test_checkout.py
     test_pedidos.py
+    test_seguranca.py
 docs/semana-02/               # Requisitos, regras, fluxos e protótipos
 docs/semana-03/               # Documentação da modelagem de dados
 docs/semana-04/               # Documentação da autenticação de clientes
@@ -74,6 +75,7 @@ docs/semana-05/               # Documentação do catálogo público
 docs/semana-06/               # Documentação do carrinho de compras
 docs/semana-07/               # Documentação da finalização da compra
 docs/semana-08/               # Documentação do gerenciamento de pedidos
+docs/semana-09/               # Relatório de testes e correção de falhas
 templates/
     base.html
     principal/inicio.html
@@ -87,6 +89,7 @@ templates/
     principal/equipe_pedidos.html
     principal/equipe_pedido_detalhe.html
     principal/acesso_negado.html
+    principal/pedido_nao_encontrado.html
     registration/cadastro.html
     registration/login.html
 static/css/estilos.css
@@ -261,3 +264,21 @@ Os estados seguem a tabela documentada: Recebido → Confirmado → Em preparo �
 ```
 
 Na validação da Semana 8, os **273 testes passaram**: 233 das semanas anteriores e 40 do gerenciamento de pedidos. `check`, `makemigrations --check --dry-run`, `pip check` e `git diff --check` não apontaram problemas.
+
+## Semana 9 — Testes automatizados e correção de falhas
+
+A Semana 9 auditou a aplicação e a suíte de testes em relação aos requisitos, corrigiu as falhas encontradas e registrou os resultados exigidos por RNF-008 no [relatório da Semana 9](docs/semana-09/testes-correcao-falhas.md), com metodologia, inventário da suíte, matriz de cobertura, achados por severidade, testes antes e depois das correções, mutação e verificações de cálculos, permissões, segurança e concorrência.
+
+Correções aplicadas, sempre com o teste de regressão escrito e executado antes:
+
+- **Checkout:** com token de revisão inválido ou base desatualizada, o endereço digitado volta preenchido; a revisão continua recalculada no servidor.
+- **Meus pedidos:** pedido inexistente ou de outro cliente responde 404 com “Pedido não encontrado ou acesso não permitido.”, de forma idêntica nos dois casos; o visitante encaminhado ao login a partir de Meus pedidos vê “Entre para consultar seus pedidos.”.
+- **Suíte:** as conexões SQLite abertas pelas threads dos testes de concorrência são fechadas na própria thread (os 50 `ResourceWarning` deixaram de ocorrer), e os testes usam a API pública de mensagens do Django.
+
+Foram acrescentados testes de escape de HTML, mascaramento de senhas em relatórios de erro, identificadores fora da faixa, perda de acesso durante a sessão e uma análise AST que impede o uso de `float` nos módulos que calculam valores. Não houve alteração de modelos, migrations, dependências ou regras comerciais.
+
+```powershell
+.\.venv\Scripts\python.exe -W default manage.py test
+```
+
+Na validação da Semana 9, os **293 testes passaram** sem avisos: 273 anteriores e 20 novos. `check`, `makemigrations --check --dry-run`, `pip check` e `git diff --check` não apontaram problemas. Continuam pendentes do supervisor D-001 a D-004, o limite provisório de R$ 5.000,00 e produtos com preço zero; os avisos de `check --deploy` ficam para a implantação.

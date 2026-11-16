@@ -1,3 +1,4 @@
+import ast
 import inspect
 import threading
 import uuid
@@ -15,7 +16,12 @@ from django.test import Client, TestCase, TransactionTestCase, override_settings
 from django.test.utils import CaptureQueriesContext
 from django.urls import reverse
 
+from . import carrinho as carrinho_modulo
 from . import checkout
+from . import forms as forms_modulo
+from . import models as models_modulo
+from . import pedidos as pedidos_modulo
+from . import views as views_modulo
 from .carrinho import CHAVE_SESSAO
 from .forms import EntregaForm
 from .models import Categoria, EstadoPedido, ItemPedido, Pedido, Produto
@@ -35,6 +41,58 @@ MSG_INDISPONIVEL = checkout.CheckoutIndisponivel.mensagem
 MSG_VALORES_ATUALIZADOS = checkout.RevisaoDesatualizada.mensagem
 MSG_REVISAO_INVALIDA = checkout.RevisaoInvalida.mensagem
 MSG_FALHA = checkout.FalhaAoRegistrar.mensagem
+
+
+MODULOS_MONETARIOS = {
+    'carrinho': carrinho_modulo, 'checkout': checkout, 'forms': forms_modulo,
+    'models': models_modulo, 'pedidos': pedidos_modulo, 'views': views_modulo,
+}
+# Literais float aceitos somente nestas atribuições: espera em segundos, não valor monetário.
+FLOAT_PERMITIDO_EM = frozenset({'ESPERA_INICIAL_APOS_TRAVA'})
+
+
+def usos_de_float(fonte):
+    """Lista (linha, descrição) dos usos de ponto flutuante binário em um código-fonte.
+
+    Detecta chamadas a float(), conversões from_float, literais float e divisão verdadeira
+    ('/'), que produz float entre inteiros. A atribuição direta de um literal às constantes
+    de FLOAT_PERMITIDO_EM é aceita; qualquer chamada dentro dela continua sendo apontada.
+    """
+    arvore = ast.parse(fonte)
+    literais_permitidos = set()
+    for no in ast.walk(arvore):
+        if isinstance(no, ast.Assign) and isinstance(no.value, ast.Constant) and any(
+            isinstance(alvo, ast.Name) and alvo.id in FLOAT_PERMITIDO_EM for alvo in no.targets
+        ):
+            literais_permitidos.add(id(no.value))
+    achados = []
+    for no in ast.walk(arvore):
+        if isinstance(no, ast.Call):
+            funcao = no.func
+            if isinstance(funcao, ast.Name) and funcao.id == 'float':
+                achados.append((no.lineno, 'float()'))
+            elif isinstance(funcao, ast.Attribute) and funcao.attr in ('from_float', 'create_decimal_from_float'):
+                achados.append((no.lineno, f'{funcao.attr}()'))
+        elif isinstance(no, ast.Constant) and isinstance(no.value, float) and id(no) not in literais_permitidos:
+            achados.append((no.lineno, f'literal float {no.value!r}'))
+        elif isinstance(no, ast.BinOp) and isinstance(no.op, ast.Div):
+            achados.append((no.lineno, 'divisão verdadeira'))
+    return sorted(achados)
+
+
+def fechar_conexoes_da_thread():
+    """Fecha as conexões abertas pela thread de teste atual, na própria thread.
+
+    No banco de testes SQLite em memória, o close() do Django é ignorado para não apagar o
+    banco; a conexão crua desta thread é então fechada diretamente. As conexões do Django são
+    locais a cada thread, e o banco compartilhado continua aberto pela thread principal.
+    """
+    if threading.current_thread() is threading.main_thread():
+        raise RuntimeError('A conexão da thread principal não deve ser fechada.')
+    for conexao in connections.all(initialized_only=True):
+        if conexao.connection is not None:
+            conexao.connection.close()
+            conexao.connection = None
 
 
 class _Combinados:
@@ -372,6 +430,10 @@ class ValoresCheckoutTests(CheckoutBase):
 
     def test_calculos_nao_usam_float(self):
         self.assertNotRegex(inspect.getsource(checkout), r'\bfloat\s*\(')
+        # Análise AST de todos os módulos que calculam, validam ou exibem valores.
+        for nome, modulo in MODULOS_MONETARIOS.items():
+            with self.subTest(modulo=nome):
+                self.assertEqual(usos_de_float(inspect.getsource(modulo)), [])
         self.preencher((self.arroz, 3))
         revisao = self.revisar().context['revisao']
         for valor in (revisao.subtotal, revisao.taxa_entrega, revisao.total, revisao.linhas[0].valor):
@@ -387,6 +449,24 @@ class ValoresCheckoutTests(CheckoutBase):
             ('37.50', '5.00', '42.50'),
         )
         self.assertEqual(conteudo['bairros'], [BAIRRO_TESTE])
+
+    def test_analise_ast_detecta_float_injetado_e_aceita_a_espera_da_trava(self):
+        fonte = inspect.getsource(checkout)
+        # A constante de espera (segundos, não dinheiro) é o único literal float permitido.
+        self.assertIn('ESPERA_INICIAL_APOS_TRAVA = 0.05', fonte)
+        for injecao, esperado in (
+            ('total = float(subtotal)', 'float()'),
+            ('taxa = Decimal.from_float(taxa)', 'from_float()'),
+            ('taxa = decimal.Context().create_decimal_from_float(taxa)', 'create_decimal_from_float()'),
+            ('desconto = 0.1', 'literal float 0.1'),
+            ('metade = subtotal / 2', 'divisão verdadeira'),
+            # A exceção vale só para o literal atribuído diretamente à constante de espera.
+            ('ESPERA_INICIAL_APOS_TRAVA = 0.05 * float(1)', ['float()', 'literal float 0.05']),
+        ):
+            with self.subTest(injecao=injecao):
+                achados = usos_de_float(fonte + '\n' + injecao + '\n')
+                esperados = esperado if isinstance(esperado, list) else [esperado]
+                self.assertEqual(sorted(descricao for _, descricao in achados), sorted(esperados))
 
     def test_validacao_estrutural_ocorre_antes_de_salvar(self):
         self.preencher((self.arroz, 2))
@@ -1318,7 +1398,7 @@ class ConcorrenciaCheckoutTests(TransactionTestCase):
             try:
                 respostas['segunda'] = segunda()
             finally:
-                connections.close_all()
+                fechar_conexoes_da_thread()
 
         with mock.patch.object(checkout, alvo, side_effect=com_pausa):
             thread = threading.Thread(target=executar_segunda, name='segunda-confirmacao')
@@ -1436,3 +1516,46 @@ class MigracaoChaveIdempotenciaTests(TransactionTestCase):
         self.assertEqual(list(PedidoNovo.objects.order_by('pk').values(*self.campos)), historico)
         with self.assertRaises(IntegrityError):
             PedidoNovo.objects.filter(pk=historico[1]['id']).update(chave_idempotencia=chaves[0])
+
+
+@configurado
+class PreservacaoEnderecoTests(CheckoutBase):
+    """S9-01 (RNF-005): erros na leitura da revisão preservam o endereço digitado."""
+
+    forjados = {'subtotal': '0.01', 'taxa_entrega': '0.01', 'total': '0.01', 'preco': '0.01'}
+
+    def setUp(self):
+        super().setUp()
+        self.preencher((self.arroz, 2))
+
+    def assert_endereco_preservado(self, resposta, mensagem):
+        self.assertEqual(resposta.status_code, 200)
+        self.assertContains(resposta, mensagem)
+        form = resposta.context['form']
+        for campo in ('logradouro', 'numero', 'complemento', 'bairro', 'telefone'):
+            with self.subTest(campo=campo):
+                self.assertEqual(form[campo].value(), ENTREGA_TESTE[campo])
+        for valor in ('value="Rua de teste"', 'value="10"', 'value="Bloco de teste"', 'value="telefone de teste"'):
+            self.assertContains(resposta, valor)
+        self.assertContains(resposta, f'<option value="{BAIRRO_TESTE}" selected>', html=False)
+        # A revisão reapresentada vem do servidor, nunca dos valores enviados.
+        revisao = resposta.context['revisao']
+        self.assertEqual((revisao.subtotal, revisao.taxa_entrega, revisao.total),
+                         (Decimal('25.00'), TAXA_TESTE, Decimal('30.00')))
+        self.assertNotContains(resposta, '0,01')
+        if mensagem != checkout.BaseDesatualizada.mensagem:
+            self.assert_sem_pedido()
+        self.assertFalse(Pedido.objects.filter(itens__isnull=False).exists())
+        self.assertEqual(self.itens_sessao(), {str(self.arroz.pk): 2})
+
+    def test_token_adulterado_preserva_o_endereco(self):
+        token = self.token()
+        resposta = self.confirmar(token[:-2] + ('AA' if token[-2:] != 'AA' else 'BB'), **self.forjados)
+        self.assert_endereco_preservado(resposta, MSG_REVISAO_INVALIDA)
+
+    def test_base_desatualizada_preserva_o_endereco(self):
+        token = self.token()
+        self.criar_pedido_direto(self.cliente, uuid.uuid4())
+        resposta = self.confirmar(token, **self.forjados)
+        self.assert_endereco_preservado(resposta, checkout.BaseDesatualizada.mensagem)
+        self.assertEqual(Pedido.objects.count(), 1)

@@ -4,6 +4,9 @@
 
 {% block content %}
 <h1>Login</h1>
+{% if aviso_destino %}
+    <p class="mensagens" role="status">{{ aviso_destino }}</p>
+{% endif %}
 <p>Entre com seu nome de usuário e sua senha.</p>
 <form method="post" action="{% url 'principal:login' %}" class="form-conta">
     {% csrf_token %}

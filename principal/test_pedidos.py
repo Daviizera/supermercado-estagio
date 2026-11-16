@@ -1,3 +1,4 @@
+import re
 import threading
 from datetime import timedelta
 from decimal import Decimal
@@ -5,6 +6,7 @@ from unittest import mock
 
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Permission
+from django.contrib.messages import get_messages
 from django.db import DatabaseError, connection, connections
 from django.test import Client, TestCase, TransactionTestCase
 from django.test.utils import CaptureQueriesContext
@@ -26,6 +28,26 @@ VALIDAS = {
     (E.EM_PREPARO, E.SAIU_PARA_ENTREGA), (E.SAIU_PARA_ENTREGA, E.ENTREGUE),
     (E.RECEBIDO, E.CANCELADO), (E.CONFIRMADO, E.CANCELADO), (E.EM_PREPARO, E.CANCELADO),
 }
+
+
+def mensagens(resposta):
+    """Mensagens da requisição pela API pública do framework de mensagens."""
+    return [str(mensagem) for mensagem in get_messages(resposta.wsgi_request)]
+
+
+def fechar_conexoes_da_thread():
+    """Fecha as conexões abertas pela thread de teste atual, na própria thread.
+
+    No banco de testes SQLite em memória, o close() do Django é ignorado para não apagar o
+    banco; a conexão crua desta thread é então fechada diretamente. As conexões do Django são
+    locais a cada thread, e o banco compartilhado continua aberto pela thread principal.
+    """
+    if threading.current_thread() is threading.main_thread():
+        raise RuntimeError('A conexão da thread principal não deve ser fechada.')
+    for conexao in connections.all(initialized_only=True):
+        if conexao.connection is not None:
+            conexao.connection.close()
+            conexao.connection = None
 
 
 def permissao(codinome):
@@ -355,7 +377,7 @@ class TransicoesTests(Dados, TestCase):
                     antes = self.retrato(pedido)
                     resposta = self.alterar(self.http, pedido, atual, novo)
                     self.assertRedirects(resposta, reverse('principal:equipe_pedido_detalhe', args=[pedido.pk]))
-                    self.assertIn(MSG_INVALIDA, [str(m) for m in resposta.wsgi_request._messages])
+                    self.assertIn(MSG_INVALIDA, mensagens(resposta))
                     self.assertEqual(Pedido.objects.get(pk=pedido.pk).estado, atual)
                     self.assertEqual(self.retrato(pedido), antes)
 
@@ -382,7 +404,7 @@ class TransicoesTests(Dados, TestCase):
         pedido = self.criar_pedido(estado=E.CONFIRMADO)
         antes = self.retrato(pedido)
         resposta = self.alterar(self.http, pedido, E.RECEBIDO, E.CONFIRMADO)
-        self.assertIn(MSG_MUDOU, [str(m) for m in resposta.wsgi_request._messages])
+        self.assertIn(MSG_MUDOU, mensagens(resposta))
         self.assertEqual(Pedido.objects.get(pk=pedido.pk).estado, E.CONFIRMADO)
         self.assertEqual(self.retrato(pedido), antes)
 
@@ -403,8 +425,8 @@ class TransicoesTests(Dados, TestCase):
         pedido = self.criar_pedido()
         primeira = self.alterar(self.http, pedido, E.RECEBIDO, E.CONFIRMADO)
         segunda = self.alterar(self.http, pedido, E.RECEBIDO, E.CONFIRMADO)
-        self.assertIn(f'Pedido {pedido.pk}: Recebido → Confirmado.', [str(m) for m in primeira.wsgi_request._messages])
-        self.assertIn(MSG_MUDOU, [str(m) for m in segunda.wsgi_request._messages])
+        self.assertIn(f'Pedido {pedido.pk}: Recebido → Confirmado.', mensagens(primeira))
+        self.assertIn(MSG_MUDOU, mensagens(segunda))
         self.assertEqual(Pedido.objects.get(pk=pedido.pk).estado, E.CONFIRMADO)
 
     def test_duas_pessoas_com_paginas_antigas(self):
@@ -413,7 +435,7 @@ class TransicoesTests(Dados, TestCase):
         # As duas abriram o pedido em Recebido; a primeira confirma e a segunda tenta cancelar.
         self.alterar(self.http, pedido, E.RECEBIDO, E.CONFIRMADO)
         resposta = self.alterar(outra, pedido, E.RECEBIDO, E.CANCELADO)
-        self.assertIn(MSG_MUDOU, [str(m) for m in resposta.wsgi_request._messages])
+        self.assertIn(MSG_MUDOU, mensagens(resposta))
         self.assertEqual(Pedido.objects.get(pk=pedido.pk).estado, E.CONFIRMADO)
         detalhe = outra.get(reverse('principal:equipe_pedido_detalhe', args=[pedido.pk]))
         self.assertContains(detalhe, MSG_MUDOU)
@@ -423,7 +445,7 @@ class TransicoesTests(Dados, TestCase):
         pedido = self.criar_pedido()
         with mock.patch('django.db.models.query.QuerySet.update', side_effect=DatabaseError('falha simulada')):
             resposta = self.alterar(self.http, pedido, E.RECEBIDO, E.CONFIRMADO)
-        self.assertIn(MSG_FALHA, [str(m) for m in resposta.wsgi_request._messages])
+        self.assertIn(MSG_FALHA, mensagens(resposta))
         self.assertEqual(Pedido.objects.get(pk=pedido.pk).estado, E.RECEBIDO)
 
     def test_alteracao_usa_uma_unica_atualizacao_condicional(self):
@@ -559,6 +581,96 @@ class AreaDoClienteTests(Dados, TestCase):
         self.assertEqual(self.http.post(reverse('principal:acompanhamento_pedido', args=[pedido.pk])).status_code, 405)
 
 
+MSG_PEDIDO_NAO_ENCONTRADO = 'Pedido não encontrado ou acesso não permitido.'
+MSG_ENTRE_PARA_PEDIDOS = 'Entre para consultar seus pedidos.'
+
+
+def sem_tokens_csrf(conteudo):
+    """Remove os valores de CSRF, que mudam a cada renderização, para comparar páginas."""
+    return re.sub(r'name="csrfmiddlewaretoken" value="[^"]+"', 'name="csrfmiddlewaretoken"', conteudo)
+
+
+class PedidoNaoEncontradoTests(Dados, TestCase):
+    """S9-02: pedido inexistente ou alheio responde 404 com a mesma mensagem, sem dados."""
+
+    def setUp(self):
+        self.criar_dados()
+        self.http = self.entrar(self.cliente)
+        self.alheio = self.criar_pedido(cliente=self.outro_cliente)
+        Pedido.objects.filter(pk=self.alheio.pk).update(logradouro='Rua secreta de teste', telefone='tel secreto')
+
+    def test_inexistente_alheio_e_gigante_tem_resposta_identica(self):
+        for nome in ('acompanhamento_pedido', 'confirmacao_pedido'):
+            corpos = []
+            for identificador in (self.alheio.pk, 999999, 10 ** 30):
+                with self.subTest(rota=nome, identificador=identificador):
+                    resposta = self.http.get(reverse(f'principal:{nome}', args=[identificador]))
+                    self.assertEqual(resposta.status_code, 404)
+                    self.assertTemplateUsed(resposta, 'principal/pedido_nao_encontrado.html')
+                    self.assertContains(resposta, MSG_PEDIDO_NAO_ENCONTRADO, status_code=404)
+                    for dado in ('Rua secreta de teste', 'tel secreto', self.outro_cliente.username,
+                                 str(self.alheio.total).replace('.', ',')):
+                        self.assertNotContains(resposta, dado, status_code=404)
+                    corpos.append(sem_tokens_csrf(resposta.content.decode()))
+            # Nada distingue um pedido alheio existente de um identificador inexistente.
+            self.assertEqual(len(set(corpos)), 1)
+
+    def test_pedido_proprio_continua_acessivel(self):
+        proprio = self.criar_pedido()
+        for nome in ('acompanhamento_pedido', 'confirmacao_pedido'):
+            self.assertEqual(self.http.get(reverse(f'principal:{nome}', args=[proprio.pk])).status_code, 200)
+
+
+class MensagemLoginMeusPedidosTests(Dados, TestCase):
+    """S9-03: visitante em Meus pedidos vê a mensagem prevista no login, somente nesse caso."""
+
+    def setUp(self):
+        self.criar_dados()
+        self.cliente.set_password('Chuva!Telhado42Mar')
+        self.cliente.save()
+
+    def test_visitante_em_meus_pedidos_recebe_a_mensagem_e_volta_ao_destino(self):
+        url = reverse('principal:meus_pedidos')
+        resposta = self.client.get(url, follow=True)
+        self.assertEqual(resposta.redirect_chain, [(f"{reverse('principal:login')}?next={url}", 302)])
+        self.assertEqual(resposta.content.decode().count(MSG_ENTRE_PARA_PEDIDOS), 1)
+        self.assertContains(resposta, f'name="next" value="{url}"')
+
+        login = self.client.post(
+            f"{reverse('principal:login')}?next={url}",
+            {'username': self.cliente.username, 'password': 'Chuva!Telhado42Mar', 'next': url},
+        )
+        self.assertRedirects(login, url)
+
+    def test_mensagem_nao_se_acumula_em_recargas(self):
+        url_login = f"{reverse('principal:login')}?next={reverse('principal:meus_pedidos')}"
+        for _ in range(3):
+            self.assertEqual(self.client.get(url_login).content.decode().count(MSG_ENTRE_PARA_PEDIDOS), 1)
+
+    def test_outras_rotas_nao_recebem_a_mensagem(self):
+        pedido = self.criar_pedido()
+        for url in (
+            reverse('principal:minha_conta'), reverse('principal:checkout'),
+            reverse('principal:equipe_pedidos'), reverse('principal:acompanhamento_pedido', args=[pedido.pk]),
+        ):
+            with self.subTest(url=url):
+                resposta = self.client.get(url, follow=True)
+                self.assertTemplateUsed(resposta, 'registration/login.html')
+                self.assertNotContains(resposta, MSG_ENTRE_PARA_PEDIDOS)
+        self.assertNotContains(self.client.get(reverse('principal:login')), MSG_ENTRE_PARA_PEDIDOS)
+
+    def test_next_externo_nao_dispara_a_mensagem_nem_redireciona_para_fora(self):
+        for destino in ('https://externo.example/pedidos/', '//externo.example/pedidos/',
+                        'http://testserver.evil/pedidos/'):
+            with self.subTest(destino=destino):
+                url_login = f"{reverse('principal:login')}?next={destino}"
+                self.assertNotContains(self.client.get(url_login), MSG_ENTRE_PARA_PEDIDOS)
+                login = Client().post(url_login, {
+                    'username': self.cliente.username, 'password': 'Chuva!Telhado42Mar', 'next': destino,
+                })
+                self.assertRedirects(login, reverse('principal:minha_conta'), fetch_redirect_response=False)
+
+
 class ConcorrenciaTransicoesTests(Dados, TransactionTestCase):
     """Requisições simultâneas a partir do mesmo estado: no máximo uma transição é efetivada."""
 
@@ -580,7 +692,7 @@ class ConcorrenciaTransicoesTests(Dados, TransactionTestCase):
             except pedidos.ErroPedido as erro:
                 resultados[indice] = (type(erro).__name__, None)
             finally:
-                connections.close_all()
+                fechar_conexoes_da_thread()
 
         threads = [
             threading.Thread(target=executar, args=(indice, *acao)) for indice, acao in enumerate(acoes)

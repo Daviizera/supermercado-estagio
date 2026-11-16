@@ -1,0 +1,12 @@
+{% extends 'base.html' %}
+
+{% block title %}Pedido não encontrado — Sistema de Pedidos Online{% endblock %}
+
+{% block content %}
+<h1>Pedido não encontrado</h1>
+<p>{{ mensagem }}</p>
+<p>
+    <a href="{% url 'principal:meus_pedidos' %}">Meus pedidos</a>
+    <a href="{% url 'principal:catalogo' %}">Voltar ao catálogo</a>
+</p>
+{% endblock %}
