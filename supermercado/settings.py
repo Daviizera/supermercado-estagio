@@ -10,6 +10,7 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/5.2/ref/settings/
 """
 
+from decimal import Decimal
 from pathlib import Path
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
@@ -102,6 +103,19 @@ AUTH_PASSWORD_VALIDATORS = [
 LOGIN_URL = 'principal:login'
 LOGIN_REDIRECT_URL = 'principal:minha_conta'
 LOGOUT_REDIRECT_URL = 'principal:inicio'
+
+# Configuração central da finalização da compra (RN-009, RN-010). Valores lidos somente
+# por principal/checkout.py. Nenhum dado comercial real foi definido (D-001, D-002).
+#
+# Bairros atendidos: vazio até o supermercado fornecer a lista; sem bairros o checkout
+# permanece bloqueado.
+CHECKOUT_BAIRROS_ATENDIDOS = ()
+# Taxa fixa única de entrega: None significa "não configurada" e bloqueia o checkout.
+# Decimal('0.00') representaria entrega explicitamente gratuita.
+CHECKOUT_TAXA_ENTREGA = None
+# Valor máximo do pedido, incluindo a taxa de entrega. Decisão operacional provisória,
+# pendente de validação do supervisor.
+CHECKOUT_VALOR_MAXIMO_PEDIDO = Decimal('5000.00')
 
 
 # Internationalization

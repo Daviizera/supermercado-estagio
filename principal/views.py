@@ -6,12 +6,15 @@ from django.views.decorators.cache import never_cache
 from django.views.decorators.debug import sensitive_post_parameters
 from django.views.decorators.http import require_http_methods, require_POST, require_safe
 
+from . import checkout as servico_checkout
 from .carrinho import (
     Carrinho, ItemAusente, ItemInconsistente, ProdutoIndisponivel, QuantidadeAcimaDoLimite,
     QuantidadeInvalida,
 )
-from .forms import MENSAGEM_QUANTIDADE_INVALIDA, FiltroCatalogoForm, QuantidadeCarrinhoForm
-from .models import Produto
+from .forms import (
+    MENSAGEM_QUANTIDADE_INVALIDA, EntregaForm, FiltroCatalogoForm, QuantidadeCarrinhoForm,
+)
+from .models import Pedido, Produto
 
 MENSAGEM_PRODUTO_INDISPONIVEL = 'Este produto não está disponível.'
 MENSAGEM_ITEM_AUSENTE = 'Este item não está no carrinho.'
@@ -172,3 +175,105 @@ def remover_item_carrinho(request, pk):
     else:
         messages.error(request, MENSAGEM_ITEM_AUSENTE)
     return redirect('principal:carrinho')
+
+
+@require_POST
+def remover_entradas_nao_identificadas(request):
+    """Remove apenas registros sem produto identificável; itens válidos são preservados."""
+    removidas = Carrinho(request.session).remover_entradas_nao_identificadas()
+    if removidas:
+        messages.success(request, f'{removidas} registro(s) não identificado(s) removido(s) do carrinho.')
+    else:
+        messages.info(request, 'Não há registros não identificados no carrinho.')
+    return redirect('principal:carrinho')
+
+
+def _render_checkout(request, *, form=None, base=None, revisao=None, conteudo_anterior=None):
+    """Apresenta a revisão com valores do servidor; nunca grava pedido nem sessão."""
+    contexto = {'bloqueio': None, 'revisao': None, 'token': None, 'form': form}
+    try:
+        configuracao = servico_checkout.obter_configuracao()
+        if revisao is None:
+            revisao = servico_checkout.montar_revisao(request.session, configuracao)
+    except servico_checkout.ErroCheckout as erro:
+        contexto['bloqueio'] = erro.mensagem
+        return render(request, 'principal/checkout.html', contexto)
+    if conteudo_anterior is not None and revisao.conteudo() != conteudo_anterior:
+        messages.warning(request, servico_checkout.RevisaoDesatualizada.mensagem)
+    if contexto['form'] is None:
+        contexto['form'] = EntregaForm(configuracao=configuracao)
+    contexto['revisao'] = revisao
+    # Reapresentações mantêm a base recebida; uma nova abertura usa o último pedido atual.
+    if base is None:
+        base = servico_checkout.pedido_base(request.user)
+    contexto['token'] = servico_checkout.assinar_revisao(revisao, base, request.user)
+    return render(request, 'principal/checkout.html', contexto)
+
+
+@login_required
+@never_cache
+@require_http_methods(['GET', 'HEAD', 'POST'])
+def checkout(request):
+    if request.method != 'POST':
+        return _render_checkout(request)
+
+    try:
+        # A chave é derivada no servidor a partir do usuário e da base assinada.
+        lida = servico_checkout.ler_revisao(request.POST.get('revisao'), request.user)
+        # Reenvio de uma tentativa já concluída devolve o mesmo pedido, sem tocar no carrinho;
+        # sem pedido, a base precisa ser o último pedido atual do usuário.
+        existente = servico_checkout.pedido_da_tentativa(request.user, lida.base, lida.chave)
+    except servico_checkout.ErroCheckout as erro:
+        messages.error(request, erro.mensagem)
+        return _render_checkout(request)
+    if existente is not None:
+        return redirect('principal:confirmacao_pedido', pk=existente.pk)
+
+    try:
+        configuracao = servico_checkout.obter_configuracao()
+    except servico_checkout.CheckoutIndisponivel:
+        return _render_checkout(request)
+    form = EntregaForm(request.POST, configuracao=configuracao)
+    if not form.is_valid():
+        return _render_checkout(
+            request, form=form, base=lida.base, conteudo_anterior=lida.conteudo,
+        )
+
+    try:
+        resultado = servico_checkout.registrar_pedido(
+            usuario=request.user, sessao=request.session, base=lida.base,
+            conteudo_revisado=lida.conteudo, entrega=form.cleaned_data,
+        )
+    except servico_checkout.RevisaoDesatualizada as erro:
+        messages.warning(request, erro.mensagem)
+        return _render_checkout(request, form=form, base=lida.base, revisao=erro.revisao)
+    except servico_checkout.LimiteExcedido as erro:
+        return _render_checkout(request, form=form, base=lida.base, revisao=erro.revisao)
+    except (servico_checkout.ChaveDeOutroCliente, servico_checkout.BaseDesatualizada) as erro:
+        # Nova revisão com a base atual; a base recusada não é reaproveitada.
+        messages.error(request, erro.mensagem)
+        return _render_checkout(request, form=form)
+    except servico_checkout.ErroCheckout as erro:
+        messages.error(request, erro.mensagem)
+        return _render_checkout(request, form=form, base=lida.base)
+
+    if resultado.criado:
+        # Somente depois da transação confirmada; remove apenas a chave do carrinho.
+        Carrinho(request.session).esvaziar()
+        messages.success(request, 'Pedido registrado com sucesso.')
+    return redirect('principal:confirmacao_pedido', pk=resultado.pedido.pk)
+
+
+@login_required
+@never_cache
+@require_safe
+def confirmacao_pedido(request, pk):
+    """Confirmação do pedido recém-registrado, restrita ao próprio cliente (RF-025)."""
+    pedido = get_object_or_404(
+        Pedido.objects.prefetch_related('itens'), pk=pk, cliente=request.user,
+    )
+    itens = [
+        {'item': item, 'valor': item.quantidade * item.preco_unitario}
+        for item in pedido.itens.all()
+    ]
+    return render(request, 'principal/confirmacao_pedido.html', {'pedido': pedido, 'itens': itens})

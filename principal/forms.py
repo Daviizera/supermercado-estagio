@@ -4,8 +4,9 @@ from django import forms
 from django.core.exceptions import ValidationError
 from django.core.validators import MaxValueValidator
 
+from . import checkout
 from .carrinho import limite_tecnico_quantidade
-from .models import Categoria
+from .models import Categoria, Pedido
 
 MENSAGEM_QUANTIDADE_INVALIDA = 'Informe uma quantidade inteira maior que zero.'
 
@@ -66,3 +67,50 @@ class QuantidadeCarrinhoForm(forms.Form):
                 'max_value': 'Informe uma quantidade de no máximo %(limit_value)s.',
             },
         )
+
+
+def _tamanho_entrega(campo):
+    return Pedido._meta.get_field(campo).max_length
+
+
+class EntregaForm(forms.Form):
+    """Dados de entrega nos campos existentes de Pedido.
+
+    As regras ficam em checkout.validar_entrega, também aplicada pelo serviço no registro;
+    o formulário apenas associa os erros aos campos.
+    """
+
+    logradouro = forms.CharField(label='Logradouro', max_length=_tamanho_entrega('logradouro'))
+    numero = forms.CharField(label='Número', max_length=_tamanho_entrega('numero'))
+    complemento = forms.CharField(
+        label='Complemento (opcional)', required=False, max_length=_tamanho_entrega('complemento'),
+    )
+    bairro = forms.CharField(
+        label='Bairro', max_length=_tamanho_entrega('bairro'), widget=forms.Select,
+    )
+    telefone = forms.CharField(label='Telefone', max_length=_tamanho_entrega('telefone'))
+
+    def __init__(self, *args, configuracao=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.configuracao = configuracao
+        bairros = configuracao.bairros if configuracao is not None else ()
+        # A lista exibida vem da configuração central; o servidor revalida o valor enviado.
+        self.fields['bairro'].widget.choices = (
+            [('', 'Selecione um bairro atendido')] + [(bairro, bairro) for bairro in bairros]
+        )
+        for campo in self.fields.values():
+            campo.error_messages['required'] = checkout.MENSAGEM_CAMPO_OBRIGATORIO
+
+    def clean(self):
+        dados = super().clean()
+        if self.configuracao is None:
+            raise ValidationError(checkout.CheckoutIndisponivel.mensagem)
+        try:
+            limpos = checkout.validar_entrega(dados, self.configuracao)
+        except checkout.EntregaInvalida as erro:
+            for campo, mensagem in erro.erros.items():
+                if campo not in self.errors:
+                    self.add_error(campo, mensagem)
+            return dados
+        dados.update(limpos)
+        return dados

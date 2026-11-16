@@ -1,8 +1,8 @@
 # Sistema de Pedidos Online — Supermercado
 
-Projeto acadêmico de estágio em desenvolvimento web: um sistema de pedidos online para supermercado com entrega. A aplicação contém a fundação local em Django e a página inicial mínima da **Semana 1**. A **Semana 2** acrescenta a documentação de escopo, requisitos, fluxos e protótipos. A **Semana 3** implementa a modelagem de dados e o cadastro interno de categorias e produtos pelo Django Admin. A **Semana 4** acrescenta cadastro, login, logout e uma área autenticada mínima para clientes. A **Semana 5** oferece o catálogo público de produtos ativos, com pesquisa, filtro por categoria e detalhes. A **Semana 6** acrescenta o carrinho de compras da sessão, com quantidades, remoção de itens e subtotal calculado no servidor.
+Projeto acadêmico de estágio em desenvolvimento web: um sistema de pedidos online para supermercado com entrega. A aplicação contém a fundação local em Django e a página inicial mínima da **Semana 1**. A **Semana 2** acrescenta a documentação de escopo, requisitos, fluxos e protótipos. A **Semana 3** implementa a modelagem de dados e o cadastro interno de categorias e produtos pelo Django Admin. A **Semana 4** acrescenta cadastro, login, logout e uma área autenticada mínima para clientes. A **Semana 5** oferece o catálogo público de produtos ativos, com pesquisa, filtro por categoria e detalhes. A **Semana 6** acrescenta o carrinho de compras da sessão, com quantidades, remoção de itens e subtotal calculado no servidor. A **Semana 7** implementa a finalização da compra: endereço, bairro atendido, taxa fixa, limite de valor, revisão dos valores e registro atômico e idempotente do pedido, com pagamento na entrega.
 
-Checkout e operação de pedidos continuam previstos para as próximas etapas.
+Consulta e acompanhamento dos pedidos pelo cliente e operação pela equipe continuam previstos para a Semana 8.
 
 ## Pré-requisitos
 
@@ -53,18 +53,24 @@ Sem ativação, substitua `python` por `.\.venv\Scripts\python.exe` nesses coman
 ```text
 manage.py
 supermercado/                 # Configuração do projeto Django
-principal/                   # Página inicial, autenticação, catálogo, carrinho, modelos e Admin
+principal/                   # Página inicial, autenticação, catálogo, carrinho, checkout, modelos e Admin
     carrinho.py              # Carrinho da sessão e cálculo dos valores
-    forms.py                 # Validação dos filtros do catálogo e das quantidades
+    checkout.py              # Finalização da compra e registro atômico dos pedidos
+    forms.py                 # Filtros do catálogo, quantidades e dados de entrega
     migrations/0001_initial.py
+    migrations/0002_pedido_chave_idempotencia.py
+    migrations/0003_preencher_chave_idempotencia.py
+    migrations/0004_alter_pedido_chave_idempotencia.py
     test_auth.py
     test_catalogo.py
     test_carrinho.py
+    test_checkout.py
 docs/semana-02/               # Requisitos, regras, fluxos e protótipos
 docs/semana-03/               # Documentação da modelagem de dados
 docs/semana-04/               # Documentação da autenticação de clientes
 docs/semana-05/               # Documentação do catálogo público
 docs/semana-06/               # Documentação do carrinho de compras
+docs/semana-07/               # Documentação da finalização da compra
 templates/
     base.html
     principal/inicio.html
@@ -72,6 +78,8 @@ templates/
     principal/catalogo.html
     principal/detalhe_produto.html
     principal/carrinho.html
+    principal/checkout.html
+    principal/confirmacao_pedido.html
     registration/cadastro.html
     registration/login.html
 static/css/estilos.css
@@ -195,3 +203,32 @@ Para verificar o carrinho e a regressão das semanas anteriores, execute:
 Após a auditoria técnica da Semana 6, o serviço do carrinho passou a validar as próprias entradas, quantidades com qualquer número de dígitos resultam em erro de validação e dados de sessão malformados são exibidos com aviso, sem erro interno e sem que a visualização reescreva a sessão. A documentação registra também a limitação de concorrência de requisições simultâneas na mesma sessão.
 
 Na validação final da Semana 6, os **145 testes passaram**: 86 das semanas anteriores e 59 do carrinho. `check`, `makemigrations --check --dry-run`, `pip check` e `git diff --check` não apontaram problemas, e o SQLite local permaneceu inalterado.
+
+## Semana 7 — Finalização da compra
+
+Após aplicar as migrations da semana, clientes autenticados podem abrir **Finalizar compra** no carrinho (<http://127.0.0.1:8000/checkout/>). Visitantes são encaminhados ao login e retornam ao checkout com o carrinho preservado. A página apresenta itens, quantidades, preços, valores, subtotal, taxa de entrega e total calculados no servidor, o formulário de endereço (logradouro, número, complemento opcional, bairro e telefone) e o pagamento exclusivamente na entrega. A confirmação cria o pedido em **Recebido** e exibe a página `/pedidos/<id>/confirmacao/`, acessível somente ao próprio cliente.
+
+```powershell
+.\.venv\Scripts\python.exe manage.py migrate
+```
+
+A entrega é configurada somente em `supermercado/settings.py`:
+
+| Configuração | Valor atual |
+| --- | --- |
+| `CHECKOUT_BAIRROS_ATENDIDOS` | `()` — nenhum bairro real definido (D-001). |
+| `CHECKOUT_TAXA_ENTREGA` | `None` — taxa não definida (D-002); `Decimal('0.00')` representaria entrega gratuita. |
+| `CHECKOUT_VALOR_MAXIMO_PEDIDO` | `Decimal('5000.00')` — limite provisório do total, incluindo a taxa, pendente de validação do supervisor. |
+
+**Com essa configuração, o checkout permanece bloqueado** com a mensagem “A entrega ainda não está disponível.” até que bairros e taxa sejam fornecidos. Nenhum bairro ou valor fictício foi definido; os testes usam valores próprios apenas durante a execução.
+
+O pedido é criado em uma única transação, com `full_clean()` antes de salvar `Pedido` e cada `ItemPedido`, que guarda nome, unidade e preço do produto no momento da compra. Produtos inativos ou excluídos, entradas inconsistentes no carrinho, bairro não atendido, endereço incompleto e total acima do limite impedem o pedido e preservam o carrinho. Se nome, unidade, preço, itens, valores, taxa ou bairros configurados mudarem desde a revisão, os dados atualizados são apresentados e uma nova confirmação é exigida. Uma chave de idempotência UUID derivada no servidor do usuário e do último pedido, única no banco, impede pedidos duplicados em reenvios e em páginas de checkout abertas em paralelo; uma base que não gerou pedido só é aceita se for o último pedido atual do usuário, mesmo em token assinado; compras simultâneas do mesmo usuário iniciadas antes de qualquer conclusão contam como uma única tentativa. A `SECRET_KEY` do repositório é pública e de desenvolvimento; em produção, deve ser privada e fornecida por variável de ambiente. Após o sucesso, somente o carrinho é removido da sessão; a autenticação é mantida. O carrinho também oferece a remoção explícita dos registros não identificados.
+
+Foram acrescentadas as migrations `0002` a `0004`, que adicionam e preenchem `Pedido.chave_idempotencia` em etapas seguras para pedidos preexistentes. Detalhes, decisões provisórias e pendências estão na [documentação da finalização](docs/semana-07/finalizacao-compra.md).
+
+```powershell
+.\.venv\Scripts\python.exe manage.py test principal.test_checkout
+.\.venv\Scripts\python.exe manage.py test
+```
+
+Na validação da Semana 7, os **233 testes passaram**: 145 das semanas anteriores e 88 da finalização. `check`, `makemigrations --check --dry-run`, `pip check` e `git diff --check` não apontaram problemas. Consulta de pedidos, acompanhamento e operação pela equipe não fazem parte desta entrega.

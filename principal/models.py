@@ -1,3 +1,4 @@
+import uuid
 from decimal import Decimal
 
 from django.conf import settings
@@ -106,6 +107,10 @@ class Pedido(models.Model):
         default=EstadoPedido.RECEBIDO,
     )
     criado_em = models.DateTimeField('criado em', auto_now_add=True)
+    # Uma chave por tentativa de finalização; a unicidade no banco impede pedidos duplicados.
+    chave_idempotencia = models.UUIDField(
+        'chave de idempotência', default=uuid.uuid4, unique=True, editable=False,
+    )
 
     class Meta:
         ordering = ['-criado_em', '-id']

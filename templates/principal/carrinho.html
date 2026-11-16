@@ -10,6 +10,10 @@
         <p>Alguns dados do carrinho estão inconsistentes e não entram no subtotal.</p>
         {% if resumo.entradas_ignoradas %}
             <p>{{ resumo.entradas_ignoradas }} registro(s) do carrinho não puderam ser identificados.</p>
+            <form method="post" action="{% url 'principal:remover_entradas_nao_identificadas' %}">
+                {% csrf_token %}
+                <button type="submit">Remover registros não identificados</button>
+            </form>
         {% endif %}
     </div>
 {% endif %}
@@ -74,6 +78,7 @@
     </div>
     <p>Subtotal: <strong>R$ {{ resumo.subtotal|floatformat:"2" }}</strong></p>
     <p>Taxa de entrega informada na etapa de endereço.</p>
+    <p><a href="{% url 'principal:checkout' %}">Finalizar compra</a></p>
 {% endif %}
 
 <p><a href="{% url 'principal:catalogo' %}">Continuar comprando</a></p>

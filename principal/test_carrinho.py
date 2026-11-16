@@ -572,7 +572,9 @@ class CarrinhoTests(TestCase):
         self.assertContains(resposta, f'href="{url}"')
         self.assertContains(resposta, reverse('principal:minha_conta'))
 
-    def test_carrinho_nao_cria_pedidos_nem_oferece_finalizacao(self):
+    def test_carrinho_nao_cria_pedidos_e_so_oferece_link_para_finalizacao(self):
+        # Semana 7: o carrinho passou a oferecer acesso ao checkout (antes T-607 o omitia),
+        # mas somente como link GET; nenhuma ação do carrinho cria pedido.
         produtos_antes = list(Produto.objects.order_by('pk').values())
         self.adicionar(self.arroz.pk, '2')
         self.atualizar(self.arroz.pk, '3')
@@ -580,7 +582,9 @@ class CarrinhoTests(TestCase):
         self.remover(self.leite.pk)
 
         resposta = self.ver_carrinho()
-        self.assertNotContains(resposta, 'Finalizar')
+        url_checkout = reverse('principal:checkout')
+        self.assertContains(resposta, f'<a href="{url_checkout}">Finalizar compra</a>', html=True)
+        self.assertNotContains(resposta, f'action="{url_checkout}"')
         self.assertEqual(Pedido.objects.count(), 0)
         self.assertEqual(ItemPedido.objects.count(), 0)
         self.assertEqual(list(Produto.objects.order_by('pk').values()), produtos_antes)

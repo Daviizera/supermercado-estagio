@@ -1,0 +1,62 @@
+{% extends 'base.html' %}
+
+{% block title %}Finalizar compra — Sistema de Pedidos Online{% endblock %}
+
+{% block content %}
+<h1>Finalizar compra</h1>
+
+{% if bloqueio %}
+    <p class="aviso-carrinho" role="alert">{{ bloqueio }}</p>
+    <p><a href="{% url 'principal:carrinho' %}">Voltar ao carrinho</a></p>
+{% else %}
+    <h2>Revise seu pedido</h2>
+    <div class="tabela-rolagem">
+        <table class="tabela-carrinho">
+            <thead>
+                <tr>
+                    <th scope="col">Produto / unidade</th>
+                    <th scope="col">Quantidade</th>
+                    <th scope="col">Preço unitário</th>
+                    <th scope="col">Valor do item</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for linha in revisao.linhas %}
+                    <tr>
+                        <td>{{ linha.produto.nome }} — {{ linha.produto.unidade }}</td>
+                        <td>{{ linha.quantidade }}</td>
+                        <td>R$ {{ linha.preco|floatformat:"2" }}</td>
+                        <td>R$ {{ linha.valor|floatformat:"2" }}</td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    <dl class="resumo-pedido">
+        <dt>Subtotal</dt>
+        <dd>R$ {{ revisao.subtotal|floatformat:"2" }}</dd>
+        <dt>Taxa de entrega</dt>
+        <dd>R$ {{ revisao.taxa_entrega|floatformat:"2" }}</dd>
+        <dt>Total</dt>
+        <dd><strong>R$ {{ revisao.total|floatformat:"2" }}</strong></dd>
+    </dl>
+
+    {% if revisao.excede_limite %}
+        <p class="aviso-carrinho" role="alert">
+            O valor total do pedido ultrapassa o limite de R$ {{ revisao.valor_maximo|floatformat:"2" }}.
+            Ajuste o carrinho para continuar.
+        </p>
+    {% else %}
+        <p>Pagamento: exclusivamente na entrega.</p>
+        <form method="post" action="{% url 'principal:checkout' %}" class="form-conta">
+            {% csrf_token %}
+            <input type="hidden" name="revisao" value="{{ token }}">
+            <h2>Endereço e entrega</h2>
+            {{ form.as_div }}
+            <p>Ao confirmar, você concorda com o pagamento na entrega.</p>
+            <button type="submit">Confirmar pedido</button>
+        </form>
+    {% endif %}
+    <p><a href="{% url 'principal:carrinho' %}">Voltar ao carrinho</a></p>
+{% endif %}
+{% endblock %}

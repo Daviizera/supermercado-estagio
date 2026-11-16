@@ -50,6 +50,7 @@ a {
 }
 
 .form-conta input,
+.form-conta select,
 .filtros-catalogo input,
 .filtros-catalogo select {
     box-sizing: border-box;

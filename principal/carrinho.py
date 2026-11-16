@@ -108,6 +108,12 @@ def _chave_produto(produto_id):
     return texto
 
 
+def _chave_reconhecida(chave):
+    """Somente a forma gravada pelo serviço identifica um produto; '07' ou 7 (int) não."""
+    chave_valida = _chave_produto(chave)
+    return chave_valida is not None and chave_valida == chave
+
+
 def _confirmar_produto_ativo(produto):
     """Confirma no banco que o produto persistido existe e continua ativo."""
     if not isinstance(produto, Produto) or produto.pk is None:
@@ -225,6 +231,29 @@ class Carrinho:
         self._gravar(itens)
         return True
 
+    def remover_entradas_nao_identificadas(self):
+        """Remove somente os registros que não correspondem a um produto identificável.
+
+        Itens identificáveis, inclusive com quantidade inconsistente, são preservados e
+        continuam sujeitos à remoção individual. Retorna quantos registros foram removidos.
+        """
+        if CHAVE_SESSAO not in self.sessao:
+            return 0
+        bruto = self.sessao[CHAVE_SESSAO]
+        if not isinstance(bruto, dict):
+            # Estrutura inteira inválida: não há item identificável a preservar.
+            self._gravar({})
+            return 1
+        itens = {chave: valor for chave, valor in bruto.items() if _chave_reconhecida(chave)}
+        removidas = len(bruto) - len(itens)
+        if removidas:
+            self._gravar(itens)
+        return removidas
+
+    def esvaziar(self):
+        """Remove somente a chave do carrinho; autenticação e demais dados da sessão ficam."""
+        self.sessao.pop(CHAVE_SESSAO, None)
+
     def resumo(self):
         """Monta as linhas com os dados atuais do banco em uma única consulta, sem gravar.
 
@@ -235,9 +264,7 @@ class Carrinho:
         # Uma estrutura gravada que não é dicionário conta como um registro não identificável.
         ignoradas = int(CHAVE_SESSAO in self.sessao and not isinstance(self.sessao[CHAVE_SESSAO], dict))
         for chave, quantidade in self._itens().items():
-            chave_valida = _chave_produto(chave)
-            # Somente a forma gravada pelo serviço é aceita; '07' ou 7 (int) são ignorados.
-            if chave_valida is None or chave_valida != chave:
+            if not _chave_reconhecida(chave):
                 ignoradas += 1
                 continue
             quantidade_valida = quantidade if _quantidade_valida(quantidade) else None
