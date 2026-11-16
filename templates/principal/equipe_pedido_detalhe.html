@@ -1,0 +1,76 @@
+{% extends 'base.html' %}
+
+{% block title %}Pedido {{ pedido.pk }} — Gerenciamento de pedidos{% endblock %}
+
+{% block content %}
+<h1>Pedido {{ pedido.pk }}</h1>
+
+<dl class="resumo-pedido">
+    <dt>Data/hora</dt>
+    <dd>{{ pedido.criado_em|date:"d/m/Y H:i" }}</dd>
+    <dt>Cliente</dt>
+    <dd>{{ pedido.cliente.get_username }}</dd>
+    <dt>Telefone</dt>
+    <dd>{{ pedido.telefone }}</dd>
+    <dt>Logradouro</dt>
+    <dd>{{ pedido.logradouro }}</dd>
+    <dt>Número</dt>
+    <dd>{{ pedido.numero }}</dd>
+    <dt>Complemento</dt>
+    <dd>{{ pedido.complemento|default:"—" }}</dd>
+    <dt>Bairro</dt>
+    <dd>{{ pedido.bairro }}</dd>
+</dl>
+
+<div class="tabela-rolagem">
+    <table class="tabela-carrinho">
+        <thead>
+            <tr>
+                <th scope="col">Produto / unidade</th>
+                <th scope="col">Quantidade</th>
+                <th scope="col">Preço unitário</th>
+                <th scope="col">Valor do item</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for linha in itens %}
+                <tr>
+                    <td>{{ linha.item.nome_produto }} — {{ linha.item.unidade }}</td>
+                    <td>{{ linha.item.quantidade }}</td>
+                    <td>R$ {{ linha.item.preco_unitario|floatformat:"2" }}</td>
+                    <td>R$ {{ linha.valor|floatformat:"2" }}</td>
+                </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<dl class="resumo-pedido">
+    <dt>Subtotal</dt>
+    <dd>R$ {{ pedido.subtotal|floatformat:"2" }}</dd>
+    <dt>Taxa de entrega</dt>
+    <dd>R$ {{ pedido.taxa_entrega|floatformat:"2" }}</dd>
+    <dt>Total</dt>
+    <dd><strong>R$ {{ pedido.total|floatformat:"2" }}</strong></dd>
+    <dt>Pagamento</dt>
+    <dd>{{ pedido.get_pagamento_display }}</dd>
+    <dt>Estado atual</dt>
+    <dd><strong>{{ pedido.get_estado_display }}</strong></dd>
+</dl>
+
+{% if terminal %}
+    <p>Estado terminal: nenhuma alteração disponível.</p>
+{% elif acoes %}
+    <h2>Atualizar estado</h2>
+    {% for acao in acoes %}
+        <form method="post" action="{% url 'principal:equipe_alterar_estado' pedido.pk %}" class="form-estado">
+            {% csrf_token %}
+            <input type="hidden" name="estado_atual" value="{{ pedido.estado }}">
+            <input type="hidden" name="novo_estado" value="{{ acao.estado }}">
+            <button type="submit">{{ acao.rotulo }}</button>
+        </form>
+    {% endfor %}
+{% endif %}
+
+<p><a href="{% url 'principal:equipe_pedidos' %}">Voltar à lista</a></p>
+{% endblock %}

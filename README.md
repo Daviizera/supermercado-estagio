@@ -1,8 +1,8 @@
 # Sistema de Pedidos Online — Supermercado
 
-Projeto acadêmico de estágio em desenvolvimento web: um sistema de pedidos online para supermercado com entrega. A aplicação contém a fundação local em Django e a página inicial mínima da **Semana 1**. A **Semana 2** acrescenta a documentação de escopo, requisitos, fluxos e protótipos. A **Semana 3** implementa a modelagem de dados e o cadastro interno de categorias e produtos pelo Django Admin. A **Semana 4** acrescenta cadastro, login, logout e uma área autenticada mínima para clientes. A **Semana 5** oferece o catálogo público de produtos ativos, com pesquisa, filtro por categoria e detalhes. A **Semana 6** acrescenta o carrinho de compras da sessão, com quantidades, remoção de itens e subtotal calculado no servidor. A **Semana 7** implementa a finalização da compra: endereço, bairro atendido, taxa fixa, limite de valor, revisão dos valores e registro atômico e idempotente do pedido, com pagamento na entrega.
+Projeto acadêmico de estágio em desenvolvimento web: um sistema de pedidos online para supermercado com entrega. A aplicação contém a fundação local em Django e a página inicial mínima da **Semana 1**. A **Semana 2** acrescenta a documentação de escopo, requisitos, fluxos e protótipos. A **Semana 3** implementa a modelagem de dados e o cadastro interno de categorias e produtos pelo Django Admin. A **Semana 4** acrescenta cadastro, login, logout e uma área autenticada mínima para clientes. A **Semana 5** oferece o catálogo público de produtos ativos, com pesquisa, filtro por categoria e detalhes. A **Semana 6** acrescenta o carrinho de compras da sessão, com quantidades, remoção de itens e subtotal calculado no servidor. A **Semana 7** implementa a finalização da compra: endereço, bairro atendido, taxa fixa, limite de valor, revisão dos valores e registro atômico e idempotente do pedido, com pagamento na entrega. A **Semana 8** oferece o painel próprio de gerenciamento de pedidos para a equipe autorizada, com as transições de estado documentadas, e a consulta e o acompanhamento dos próprios pedidos pelos clientes.
 
-Consulta e acompanhamento dos pedidos pelo cliente e operação pela equipe continuam previstos para a Semana 8.
+As etapas seguintes do plano de estágio continuam previstas para as próximas semanas.
 
 ## Pré-requisitos
 
@@ -56,6 +56,7 @@ supermercado/                 # Configuração do projeto Django
 principal/                   # Página inicial, autenticação, catálogo, carrinho, checkout, modelos e Admin
     carrinho.py              # Carrinho da sessão e cálculo dos valores
     checkout.py              # Finalização da compra e registro atômico dos pedidos
+    pedidos.py               # Permissões e transições de estado dos pedidos
     forms.py                 # Filtros do catálogo, quantidades e dados de entrega
     migrations/0001_initial.py
     migrations/0002_pedido_chave_idempotencia.py
@@ -65,12 +66,14 @@ principal/                   # Página inicial, autenticação, catálogo, carri
     test_catalogo.py
     test_carrinho.py
     test_checkout.py
+    test_pedidos.py
 docs/semana-02/               # Requisitos, regras, fluxos e protótipos
 docs/semana-03/               # Documentação da modelagem de dados
 docs/semana-04/               # Documentação da autenticação de clientes
 docs/semana-05/               # Documentação do catálogo público
 docs/semana-06/               # Documentação do carrinho de compras
 docs/semana-07/               # Documentação da finalização da compra
+docs/semana-08/               # Documentação do gerenciamento de pedidos
 templates/
     base.html
     principal/inicio.html
@@ -80,6 +83,10 @@ templates/
     principal/carrinho.html
     principal/checkout.html
     principal/confirmacao_pedido.html
+    principal/meus_pedidos.html
+    principal/equipe_pedidos.html
+    principal/equipe_pedido_detalhe.html
+    principal/acesso_negado.html
     registration/cadastro.html
     registration/login.html
 static/css/estilos.css
@@ -232,3 +239,25 @@ Foram acrescentadas as migrations `0002` a `0004`, que adicionam e preenchem `Pe
 ```
 
 Na validação da Semana 7, os **233 testes passaram**: 145 das semanas anteriores e 88 da finalização. `check`, `makemigrations --check --dry-run`, `pip check` e `git diff --check` não apontaram problemas. Consulta de pedidos, acompanhamento e operação pela equipe não fazem parte desta entrega.
+
+## Semana 8 — Gerenciamento de pedidos e acompanhamento
+
+Clientes autenticados acessam **Meus pedidos** (<http://127.0.0.1:8000/pedidos/>), com identificador, data, total e estado atual somente dos próprios pedidos, e o acompanhamento de cada pedido em `/pedidos/<id>/`, com itens, valores, endereço e estado. O novo estado aparece ao abrir ou recarregar a página; não há notificações nem atualização em tempo real. A confirmação da Semana 7, em `/pedidos/<id>/confirmacao/`, continua disponível.
+
+A equipe usa o painel próprio **Gerenciamento de pedidos** (<http://127.0.0.1:8000/equipe/pedidos/>), com a lista dos pedidos e o detalhe completo, em modo somente leitura, de cada um. O Django Admin não lista nem altera pedidos. O acesso exige usuário com `is_staff` e as permissões nativas do Django:
+
+| Operação | Permissão |
+| --- | --- |
+| Consultar lista e detalhes | `principal.view_pedido` (“Can view pedido”) |
+| Alterar o estado | `principal.change_pedido` (“Can change pedido”) |
+
+As permissões são atribuídas manualmente no Admin, em **Usuários** ou **Grupos**; nenhum usuário, grupo ou permissão é criado automaticamente. Visitantes são encaminhados ao login, e usuários autenticados sem os requisitos recebem “Você não tem permissão para acessar esta área.”.
+
+Os estados seguem a tabela documentada: Recebido → Confirmado → Em preparo → Saiu para entrega → Entregue, com cancelamento pela equipe somente em Recebido, Confirmado ou Em preparo. Entregue e Cancelado são terminais. Cada alteração é enviada por POST com CSRF e aplicada por uma única atualização condicional ao estado exibido na página: ações repetidas, páginas antigas e requisições simultâneas efetivam no máximo uma transição e recebem “O estado do pedido mudou. Atualize a consulta.”. Somente o estado é alterado; itens, valores e dados de entrega permanecem como registrados. Não há histórico de alterações de estado nem novas migrations. Detalhes, decisões e limitações estão na [documentação do gerenciamento](docs/semana-08/gerenciamento-pedidos.md).
+
+```powershell
+.\.venv\Scripts\python.exe manage.py test principal.test_pedidos
+.\.venv\Scripts\python.exe manage.py test
+```
+
+Na validação da Semana 8, os **273 testes passaram**: 233 das semanas anteriores e 40 do gerenciamento de pedidos. `check`, `makemigrations --check --dry-run`, `pip check` e `git diff --check` não apontaram problemas.

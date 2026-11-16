@@ -19,6 +19,14 @@ urlpatterns = [
     ),
     path('checkout/', views.checkout, name='checkout'),
     path('pedidos/<int:pk>/confirmacao/', views.confirmacao_pedido, name='confirmacao_pedido'),
+    path('pedidos/', views.meus_pedidos, name='meus_pedidos'),
+    path('pedidos/<int:pk>/', views.acompanhamento_pedido, name='acompanhamento_pedido'),
+    path('equipe/pedidos/', views.equipe_pedidos, name='equipe_pedidos'),
+    path('equipe/pedidos/<int:pk>/', views.equipe_pedido_detalhe, name='equipe_pedido_detalhe'),
+    path(
+        'equipe/pedidos/<int:pk>/estado/', views.equipe_alterar_estado,
+        name='equipe_alterar_estado',
+    ),
     path('cadastro/', views.cadastro, name='cadastro'),
     path('login/', LoginView.as_view(), name='login'),
     # O logout retorna ao início, sem aceitar destino enviado pelo cliente.

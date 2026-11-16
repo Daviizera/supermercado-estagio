@@ -152,3 +152,8 @@ select:focus-visible {
     color: #a12121;
     background-color: #fbeaea;
 }
+
+.form-estado {
+    display: inline-block;
+    margin: 0 0.5rem 0.5rem 0;
+}

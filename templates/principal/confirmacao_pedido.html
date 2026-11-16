@@ -1,9 +1,9 @@
 {% extends 'base.html' %}
 
-{% block title %}Pedido {{ pedido.pk }} — Sistema de Pedidos Online{% endblock %}
+{% block title %}{{ titulo }} {{ pedido.pk }} — Sistema de Pedidos Online{% endblock %}
 
 {% block content %}
-<h1>Pedido registrado</h1>
+<h1>{{ titulo }}</h1>
 <dl class="resumo-pedido">
     <dt>Pedido</dt>
     <dd>{{ pedido.pk }}</dd>
@@ -52,5 +52,9 @@
     <dd>{{ pedido.get_pagamento_display }}</dd>
 </dl>
 
-<p><a href="{% url 'principal:catalogo' %}">Voltar ao catálogo</a></p>
+<p>O estado exibido é o registrado no momento desta consulta; recarregue a página para atualizá-lo.</p>
+<p>
+    <a href="{% url 'principal:meus_pedidos' %}">Meus pedidos</a>
+    <a href="{% url 'principal:catalogo' %}">Voltar ao catálogo</a>
+</p>
 {% endblock %}

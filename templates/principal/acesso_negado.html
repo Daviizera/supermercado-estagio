@@ -1,0 +1,9 @@
+{% extends 'base.html' %}
+
+{% block title %}Acesso não permitido — Sistema de Pedidos Online{% endblock %}
+
+{% block content %}
+<h1>Acesso não permitido</h1>
+<p>{{ mensagem }}</p>
+<p><a href="{% url 'principal:inicio' %}">Voltar à página inicial</a></p>
+{% endblock %}

@@ -1,12 +1,16 @@
+from functools import wraps
+
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.forms import UserCreationForm
+from django.http import Http404
 from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.cache import never_cache
 from django.views.decorators.debug import sensitive_post_parameters
 from django.views.decorators.http import require_http_methods, require_POST, require_safe
 
 from . import checkout as servico_checkout
+from . import pedidos as servico_pedidos
 from .carrinho import (
     Carrinho, ItemAusente, ItemInconsistente, ProdutoIndisponivel, QuantidadeAcimaDoLimite,
     QuantidadeInvalida,
@@ -14,7 +18,7 @@ from .carrinho import (
 from .forms import (
     MENSAGEM_QUANTIDADE_INVALIDA, EntregaForm, FiltroCatalogoForm, QuantidadeCarrinhoForm,
 )
-from .models import Pedido, Produto
+from .models import EstadoPedido, Pedido, Produto
 
 MENSAGEM_PRODUTO_INDISPONIVEL = 'Este produto não está disponível.'
 MENSAGEM_ITEM_AUSENTE = 'Este item não está no carrinho.'
@@ -264,16 +268,117 @@ def checkout(request):
     return redirect('principal:confirmacao_pedido', pk=resultado.pedido.pk)
 
 
+def _itens_com_valor(pedido):
+    """Itens com o valor da linha calculado a partir dos dados históricos registrados."""
+    return [
+        {'item': item, 'valor': item.quantidade * item.preco_unitario}
+        for item in pedido.itens.all()
+    ]
+
+
+def _render_pedido_do_cliente(request, pk, titulo):
+    # A consulta filtra pelo usuário da sessão: pedido de outro cliente resulta em 404.
+    pedido = get_object_or_404(
+        Pedido.objects.prefetch_related('itens'), pk=pk, cliente=request.user,
+    )
+    return render(request, 'principal/confirmacao_pedido.html', {
+        'pedido': pedido, 'itens': _itens_com_valor(pedido), 'titulo': titulo,
+    })
+
+
 @login_required
 @never_cache
 @require_safe
 def confirmacao_pedido(request, pk):
     """Confirmação do pedido recém-registrado, restrita ao próprio cliente (RF-025)."""
-    pedido = get_object_or_404(
-        Pedido.objects.prefetch_related('itens'), pk=pk, cliente=request.user,
+    return _render_pedido_do_cliente(request, pk, 'Pedido registrado')
+
+
+@login_required
+@never_cache
+@require_safe
+def meus_pedidos(request):
+    """Lista somente os pedidos do usuário da sessão, do mais recente ao mais antigo (RF-008)."""
+    pedidos_do_cliente = Pedido.objects.filter(cliente=request.user).order_by('-criado_em', '-pk')
+    return render(request, 'principal/meus_pedidos.html', {'pedidos': pedidos_do_cliente})
+
+
+@login_required
+@never_cache
+@require_safe
+def acompanhamento_pedido(request, pk):
+    """Estado persistido no momento da consulta; sem atualização em tempo real (RF-026)."""
+    return _render_pedido_do_cliente(request, pk, 'Acompanhamento do pedido')
+
+
+# Área interna da equipe (RF-022 a RF-024)
+
+def _acesso_negado(request):
+    return render(
+        request, 'principal/acesso_negado.html',
+        {'mensagem': servico_pedidos.MENSAGEM_SEM_PERMISSAO}, status=403,
     )
-    itens = [
-        {'item': item, 'valor': item.quantidade * item.preco_unitario}
-        for item in pedido.itens.all()
-    ]
-    return render(request, 'principal/confirmacao_pedido.html', {'pedido': pedido, 'itens': itens})
+
+
+def _area_interna(verificar):
+    """Visitante vai ao login; autenticado sem is_staff e permissão recebe HTTP 403."""
+    def decorador(view):
+        @wraps(view)
+        @login_required
+        def protegida(request, *args, **kwargs):
+            if not verificar(request.user):
+                return _acesso_negado(request)
+            return view(request, *args, **kwargs)
+        return protegida
+    return decorador
+
+
+@require_safe
+@never_cache
+@_area_interna(servico_pedidos.pode_consultar)
+def equipe_pedidos(request):
+    pedidos_recebidos = Pedido.objects.select_related('cliente').order_by('-criado_em', '-pk')
+    return render(request, 'principal/equipe_pedidos.html', {'pedidos': pedidos_recebidos})
+
+
+@require_safe
+@never_cache
+@_area_interna(servico_pedidos.pode_consultar)
+def equipe_pedido_detalhe(request, pk):
+    pedido = get_object_or_404(
+        Pedido.objects.select_related('cliente').prefetch_related('itens'), pk=pk,
+    )
+    acoes = []
+    # Os botões são conveniência; a rota de alteração revalida permissão e transição.
+    if servico_pedidos.pode_alterar(request.user):
+        acoes = [
+            {'estado': estado, 'rotulo': EstadoPedido(estado).label}
+            for estado in servico_pedidos.transicoes_permitidas(pedido.estado)
+        ]
+    return render(request, 'principal/equipe_pedido_detalhe.html', {
+        'pedido': pedido, 'itens': _itens_com_valor(pedido), 'acoes': acoes,
+        'terminal': not servico_pedidos.transicoes_permitidas(pedido.estado),
+    })
+
+
+@require_POST
+@_area_interna(servico_pedidos.pode_alterar)
+def equipe_alterar_estado(request, pk):
+    try:
+        resultado = servico_pedidos.alterar_estado(
+            usuario=request.user, pedido_id=pk,
+            estado_esperado=request.POST.get('estado_atual'),
+            novo_estado=request.POST.get('novo_estado'),
+        )
+    except Pedido.DoesNotExist:
+        raise Http404 from None
+    except servico_pedidos.SemPermissao:
+        return _acesso_negado(request)
+    except servico_pedidos.ErroPedido as erro:
+        messages.error(request, erro.mensagem)
+    else:
+        messages.success(request, (
+            f'Pedido {pk}: {EstadoPedido(resultado.anterior).label} → '
+            f'{EstadoPedido(resultado.novo).label}.'
+        ))
+    return redirect('principal:equipe_pedido_detalhe', pk=pk)

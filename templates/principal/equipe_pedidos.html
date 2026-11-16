@@ -1,0 +1,36 @@
+{% extends 'base.html' %}
+
+{% block title %}Gerenciamento de pedidos — Sistema de Pedidos Online{% endblock %}
+
+{% block content %}
+<h1>Pedidos do supermercado</h1>
+
+{% if pedidos %}
+    <div class="tabela-rolagem">
+        <table class="tabela-carrinho">
+            <thead>
+                <tr>
+                    <th scope="col">Pedido</th>
+                    <th scope="col">Cliente</th>
+                    <th scope="col">Bairro</th>
+                    <th scope="col">Total</th>
+                    <th scope="col">Estado</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for pedido in pedidos %}
+                    <tr>
+                        <td><a href="{% url 'principal:equipe_pedido_detalhe' pedido.pk %}">Pedido {{ pedido.pk }}</a></td>
+                        <td>{{ pedido.cliente.get_username }}</td>
+                        <td>{{ pedido.bairro }}</td>
+                        <td>R$ {{ pedido.total|floatformat:"2" }}</td>
+                        <td>{{ pedido.get_estado_display }}</td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+{% else %}
+    <p>Nenhum pedido recebido.</p>
+{% endif %}
+{% endblock %}
