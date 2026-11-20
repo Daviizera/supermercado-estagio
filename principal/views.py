@@ -13,12 +13,14 @@ from django.views.decorators.http import require_http_methods, require_POST, req
 
 from . import checkout as servico_checkout
 from . import pedidos as servico_pedidos
+from .busca import Normalizado, normalizar_texto
 from .carrinho import (
     Carrinho, ItemAusente, ItemInconsistente, ProdutoIndisponivel, QuantidadeAcimaDoLimite,
     QuantidadeInvalida,
 )
 from .forms import (
-    MENSAGEM_QUANTIDADE_INVALIDA, EntregaForm, FiltroCatalogoForm, QuantidadeCarrinhoForm,
+    MENSAGEM_QUANTIDADE_INVALIDA, EntregaForm, FiltroCatalogoForm, FormularioLogin,
+    QuantidadeCarrinhoForm,
 )
 from .models import EstadoPedido, Pedido, Produto
 
@@ -59,7 +61,10 @@ class EntrarView(LoginView):
     O destino comparado é o já validado pelo Django (get_redirect_url aplica
     url_has_allowed_host_and_scheme): um next externo resulta em '' e não exibe a mensagem.
     A mensagem vai no contexto, não no framework de mensagens, para não se acumular.
+    O formulário acrescenta a limitação de tentativas (principal/limite_login.py).
     """
+
+    authentication_form = FormularioLogin
 
     def get_context_data(self, **kwargs):
         contexto = super().get_context_data(**kwargs)
@@ -90,7 +95,13 @@ def minha_conta(request):
 @require_safe
 def catalogo(request):
     form = FiltroCatalogoForm(request.GET)
-    produtos = Produto.objects.filter(ativo=True).select_related('categoria').order_by('nome', 'pk')
+    # Ordem alfabética sem distinção de caixa e acentos (F-02); nome e pk desempatam nomes
+    # equivalentes de forma estável.
+    produtos = (
+        Produto.objects.filter(ativo=True).select_related('categoria')
+        .annotate(nome_normalizado=Normalizado('nome'))
+        .order_by('nome_normalizado', 'nome', 'pk')
+    )
     filtros_ativos = False
     if form.is_valid():
         categoria = form.cleaned_data['categoria']
@@ -98,7 +109,8 @@ def catalogo(request):
         if categoria:
             produtos = produtos.filter(categoria=categoria)
         if pesquisa:
-            produtos = produtos.filter(nome__icontains=pesquisa)
+            # Busca parcial comparando textos normalizados: 'agua' encontra 'Água' (F-01).
+            produtos = produtos.filter(nome_normalizado__contains=normalizar_texto(pesquisa))
         filtros_ativos = bool(categoria or pesquisa)
     else:
         # Um filtro inválido não deve liberar a listagem sem o filtro solicitado.

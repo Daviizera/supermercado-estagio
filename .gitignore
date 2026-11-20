@@ -4,6 +4,8 @@ venv/
 env/
 .env
 .env.*
+# Chave secreta local de desenvolvimento (gerada automaticamente) e temporários
+.chave-secreta-local*
 
 # Cache e bytecode Python
 __pycache__/

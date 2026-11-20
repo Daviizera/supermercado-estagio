@@ -10,23 +10,54 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/5.2/ref/settings/
 """
 
+import os
 from decimal import Decimal
 from pathlib import Path
+
+from supermercado import ambiente
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 
-# Quick-start development settings - unsuitable for production
-# See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
+# Ambiente e segredos (SEG-02, SEG-03): ver supermercado/ambiente.py.
+# DJANGO_ENV é obrigatória e precisa ser exatamente "development" ou "production"; ausente,
+# vazia ou desconhecida, a inicialização é interrompida antes de qualquer outra configuração.
+# Produção exige DJANGO_SECRET_KEY, DJANGO_ALLOWED_HOSTS e um cache compartilhado para o
+# limitador de login. A chave nunca fica no código: vem de DJANGO_SECRET_KEY ou, somente em
+# desenvolvimento, de um arquivo local aleatório ignorado pelo Git.
+AMBIENTE = ambiente.ambiente(os.environ)
+EM_PRODUCAO = AMBIENTE == ambiente.PRODUCAO
 
-# Chave pública usada somente no desenvolvimento local desta etapa.
-SECRET_KEY = 'django-insecure-somente-desenvolvimento-local-semana-1'
+SECRET_KEY = ambiente.chave_secreta(os.environ, AMBIENTE, BASE_DIR)
 
-# SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = not EM_PRODUCAO
 
-ALLOWED_HOSTS = ['127.0.0.1', 'localhost', '[::1]']
+if EM_PRODUCAO:
+    ALLOWED_HOSTS = ambiente.hosts_de_producao(os.environ)
+    CSRF_TRUSTED_ORIGINS = ambiente.origens_csrf(os.environ)
+else:
+    ALLOWED_HOSTS = ['127.0.0.1', 'localhost', '[::1]']
+    CSRF_TRUSTED_ORIGINS = []
+
+# Cookies e HTTPS: exigidos somente em produção; o desenvolvimento local usa HTTP.
+SESSION_COOKIE_SECURE = EM_PRODUCAO
+CSRF_COOKIE_SECURE = EM_PRODUCAO
+SECURE_SSL_REDIRECT = (
+    ambiente.booleano(os.environ, 'DJANGO_SECURE_SSL_REDIRECT', True) if EM_PRODUCAO else False
+)
+SECURE_HSTS_SECONDS = (
+    ambiente.inteiro_nao_negativo(
+        os.environ, 'DJANGO_SECURE_HSTS_SECONDS', ambiente.HSTS_PADRAO_SEGUNDOS,
+    ) if EM_PRODUCAO else 0
+)
+# Subdomínios e preload ficam desligados até a infraestrutura real ser validada.
+SECURE_HSTS_INCLUDE_SUBDOMAINS = False
+SECURE_HSTS_PRELOAD = False
+SECURE_CONTENT_TYPE_NOSNIFF = True
+X_FRAME_OPTIONS = 'DENY'
+# SECURE_PROXY_SSL_HEADER não é definido: não há proxy reverso confiável conhecido. Só o
+# configure quando a hospedagem tiver um proxy que sempre reescreva o cabeçalho usado.
 
 
 # Application definition
@@ -91,6 +122,7 @@ AUTH_PASSWORD_VALIDATORS = [
     },
     {
         'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator',
+        'OPTIONS': {'min_length': 12},
     },
     {
         'NAME': 'django.contrib.auth.password_validation.CommonPasswordValidator',
@@ -100,6 +132,33 @@ AUTH_PASSWORD_VALIDATORS = [
     },
 ]
 
+# Limitação de tentativas de login (SEG-01): principal/limite_login.py. O LocMemCache guarda
+# os contadores em cada processo e serve só ao desenvolvimento; em produção o alias do
+# limitador é substituído e validado logo abaixo.
+CACHES = {
+    'default': {
+        'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
+        'LOCATION': 'supermercado-padrao',
+    },
+    'limite_login': {
+        'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
+        'LOCATION': 'supermercado-limite-login',
+    },
+}
+LIMITE_LOGIN = {
+    'CACHE': 'limite_login',
+    'FALHAS_POR_USUARIO_E_IP': 5,
+    'FALHAS_POR_IP': 30,
+    'JANELA_SEGUNDOS': 15 * 60,
+    'BLOQUEIO_SEGUNDOS': 15 * 60,
+}
+# Produção: o alias usado pelo limitador recebe o cache compartilhado indicado no ambiente, e o
+# backend efetivamente configurado para esse alias é validado (LocMem e Dummy são recusados).
+# O desenvolvimento continua com LocMemCache.
+if EM_PRODUCAO:
+    CACHES[LIMITE_LOGIN['CACHE']] = ambiente.cache_do_limitador_de_producao(os.environ)
+ambiente.validar_cache_do_limitador(CACHES, LIMITE_LOGIN['CACHE'], AMBIENTE)
+
 LOGIN_URL = 'principal:login'
 LOGIN_REDIRECT_URL = 'principal:minha_conta'
 LOGOUT_REDIRECT_URL = 'principal:inicio'
@@ -107,12 +166,22 @@ LOGOUT_REDIRECT_URL = 'principal:inicio'
 # Configuração central da finalização da compra (RN-009, RN-010). Valores lidos somente
 # por principal/checkout.py. Nenhum dado comercial real foi definido (D-001, D-002).
 #
-# Bairros atendidos: vazio até o supermercado fornecer a lista; sem bairros o checkout
-# permanece bloqueado.
-CHECKOUT_BAIRROS_ATENDIDOS = ()
-# Taxa fixa única de entrega: None significa "não configurada" e bloqueia o checkout.
-# Decimal('0.00') representaria entrega explicitamente gratuita.
-CHECKOUT_TAXA_ENTREGA = None
+# Valores DEMONSTRATIVOS, aprovados apenas para a demonstração acadêmica: não representam
+# condições comerciais reais e só valem com DJANGO_ENV=development. O bairro é o mesmo bairro
+# fictício usado nos testes de checkout.
+CHECKOUT_DEMONSTRACAO_BAIRROS = ('Bairro Ficticio de Teste',)
+CHECKOUT_DEMONSTRACAO_TAXA_ENTREGA = Decimal('5.00')
+
+if EM_PRODUCAO:
+    # Produção nunca herda os valores demonstrativos. Sem bairros e taxa reais, o checkout
+    # permanece bloqueado (CheckoutIndisponivel), que é o comportamento seguro.
+    CHECKOUT_BAIRROS_ATENDIDOS = ()
+    # Taxa fixa única de entrega: None significa "não configurada" e bloqueia o checkout.
+    # Decimal('0.00') representaria entrega explicitamente gratuita.
+    CHECKOUT_TAXA_ENTREGA = None
+else:
+    CHECKOUT_BAIRROS_ATENDIDOS = CHECKOUT_DEMONSTRACAO_BAIRROS
+    CHECKOUT_TAXA_ENTREGA = CHECKOUT_DEMONSTRACAO_TAXA_ENTREGA
 # Valor máximo do pedido, incluindo a taxa de entrega. Decisão operacional provisória,
 # pendente de validação do supervisor.
 CHECKOUT_VALOR_MAXIMO_PEDIDO = Decimal('5000.00')
@@ -135,6 +204,8 @@ USE_TZ = True
 
 STATIC_URL = '/static/'
 STATICFILES_DIRS = [BASE_DIR / 'static']
+# Destino do collectstatic na implantação (ignorado pelo Git).
+STATIC_ROOT = BASE_DIR / 'staticfiles'
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field

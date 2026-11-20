@@ -1,11 +1,15 @@
 import re
 
 from django import forms
+from django.contrib.admin.forms import AdminAuthenticationForm
+from django.contrib.auth.forms import AuthenticationForm
 from django.core.exceptions import ValidationError
 from django.core.validators import MaxValueValidator
 
 from . import checkout
+from .busca import Normalizado
 from .carrinho import limite_tecnico_quantidade
+from .limite_login import LimiteDeTentativasMixin
 from .models import Categoria, Pedido
 
 MENSAGEM_QUANTIDADE_INVALIDA = 'Informe uma quantidade inteira maior que zero.'
@@ -20,7 +24,9 @@ class FiltroCatalogoForm(forms.Form):
     )
     categoria = forms.ModelChoiceField(
         label='Categoria', required=False,
-        queryset=Categoria.objects.order_by('nome', 'pk'),
+        queryset=Categoria.objects.annotate(nome_normalizado=Normalizado('nome')).order_by(
+            'nome_normalizado', 'nome', 'pk',
+        ),
         empty_label='Todas as categorias',
         error_messages={'invalid_choice': 'Selecione uma categoria válida.'},
     )
@@ -122,3 +128,11 @@ class EntregaForm(forms.Form):
             return dados
         dados.update(limpos)
         return dados
+
+
+class FormularioLogin(LimiteDeTentativasMixin, AuthenticationForm):
+    """Login do cliente: formulário nativo com limitação de tentativas (SEG-01)."""
+
+
+class FormularioLoginAdmin(LimiteDeTentativasMixin, AdminAuthenticationForm):
+    """Login do admin: mantém as regras nativas (is_staff, mensagens) e acrescenta o limite."""

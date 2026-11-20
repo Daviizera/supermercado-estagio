@@ -1,6 +1,11 @@
 from django.contrib import admin
 
+from .forms import FormularioLoginAdmin
 from .models import Categoria, Produto
+
+# Gancho nativo do AdminSite: o login do admin continua sendo o do Django (is_staff,
+# mensagens e redirecionamentos), com a mesma limitação de tentativas do site (SEG-01).
+admin.site.login_form = FormularioLoginAdmin
 
 
 # Pedidos e itens ficam fora do Admin; sua operação pertence à Semana 8.

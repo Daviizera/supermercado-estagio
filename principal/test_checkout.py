@@ -189,13 +189,14 @@ class CheckoutBase(TestCase):
 
 class ConfiguracaoCheckoutTests(CheckoutBase):
 
-    def test_configuracao_padrao_nao_tem_dados_comerciais_e_bloqueia(self):
-        self.assertEqual(tuple(settings.CHECKOUT_BAIRROS_ATENDIDOS), ())
-        self.assertIsNone(settings.CHECKOUT_TAXA_ENTREGA)
+    def test_configuracao_sem_dados_comerciais_bloqueia(self):
+        # Desde a Semana 11 o desenvolvimento usa valores demonstrativos; sem bairros e sem
+        # taxa (como em produção, ver test_entrega_demonstrativa) o checkout continua bloqueado.
         self.assertEqual(settings.CHECKOUT_VALOR_MAXIMO_PEDIDO, Decimal('5000.00'))
         self.preencher((self.arroz, 1))
 
-        resposta = self.revisar()
+        with override_settings(CHECKOUT_BAIRROS_ATENDIDOS=(), CHECKOUT_TAXA_ENTREGA=None):
+            resposta = self.revisar()
         self.assertContains(resposta, MSG_INDISPONIVEL)
         self.assertIsNone(resposta.context['token'])
         self.assertNotContains(resposta, 'name="revisao"')
