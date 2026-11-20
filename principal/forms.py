@@ -80,15 +80,23 @@ class EntregaForm(forms.Form):
     o formulário apenas associa os erros aos campos.
     """
 
-    logradouro = forms.CharField(label='Logradouro', max_length=_tamanho_entrega('logradouro'))
+    # Os atributos de preenchimento automático só auxiliam o navegador; a validação não muda.
+    logradouro = forms.CharField(
+        label='Logradouro', max_length=_tamanho_entrega('logradouro'),
+        widget=forms.TextInput(attrs={'autocomplete': 'address-line1'}),
+    )
     numero = forms.CharField(label='Número', max_length=_tamanho_entrega('numero'))
     complemento = forms.CharField(
         label='Complemento (opcional)', required=False, max_length=_tamanho_entrega('complemento'),
+        widget=forms.TextInput(attrs={'autocomplete': 'address-line2'}),
     )
     bairro = forms.CharField(
         label='Bairro', max_length=_tamanho_entrega('bairro'), widget=forms.Select,
     )
-    telefone = forms.CharField(label='Telefone', max_length=_tamanho_entrega('telefone'))
+    telefone = forms.CharField(
+        label='Telefone', max_length=_tamanho_entrega('telefone'),
+        widget=forms.TextInput(attrs={'autocomplete': 'tel', 'inputmode': 'tel'}),
+    )
 
     def __init__(self, *args, configuracao=None, **kwargs):
         super().__init__(*args, **kwargs)

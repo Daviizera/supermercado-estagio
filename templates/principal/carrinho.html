@@ -12,7 +12,7 @@
             <p>{{ resumo.entradas_ignoradas }} registro(s) do carrinho não puderam ser identificados.</p>
             <form method="post" action="{% url 'principal:remover_entradas_nao_identificadas' %}">
                 {% csrf_token %}
-                <button type="submit">Remover registros não identificados</button>
+                <button type="submit" class="botao botao--secundario">Remover registros não identificados</button>
             </form>
         {% endif %}
     </div>
@@ -24,61 +24,70 @@
     {% if resumo.possui_indisponivel %}
         <p class="aviso-carrinho" role="alert">Há produto indisponível no carrinho. Remova o item para continuar.</p>
     {% endif %}
-    <div class="tabela-rolagem">
-        <table class="tabela-carrinho">
-            <thead>
-                <tr>
-                    <th scope="col">Produto / unidade</th>
-                    <th scope="col">Preço unitário</th>
-                    <th scope="col">Quantidade</th>
-                    <th scope="col">Valor do item</th>
-                    <th scope="col">Ação</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for item in itens %}
-                    {% with linha=item.linha %}
-                    <tr>
-                        <td>
-                            {% if linha.encontrado %}
-                                {{ linha.produto.nome }} — {{ linha.produto.unidade }}
-                            {% else %}
-                                Produto não encontrado (código {{ linha.produto_id }})
-                            {% endif %}
-                            {% if not linha.disponivel %}<br><strong>Indisponível</strong>{% endif %}
-                            {% if not linha.consistente %}<br><strong>Quantidade inválida</strong>{% endif %}
-                        </td>
-                        <td>{% if linha.encontrado %}R$ {{ linha.produto.preco|floatformat:"2" }}{% else %}—{% endif %}</td>
-                        <td>
-                            {% if linha.disponivel %}
-                                <form method="post" action="{% url 'principal:atualizar_item_carrinho' linha.produto_id %}" class="form-quantidade">
-                                    {% csrf_token %}
-                                    {{ item.form.as_div }}
-                                    {% if item.form.errors and linha.consistente %}<p>Quantidade mantida: {{ linha.quantidade }}</p>{% endif %}
-                                    <button type="submit">Atualizar quantidade</button>
-                                </form>
-                            {% elif linha.consistente %}
-                                {{ linha.quantidade }}
-                            {% else %}
-                                —
-                            {% endif %}
-                        </td>
-                        <td>{% if linha.valor is not None %}R$ {{ linha.valor|floatformat:"2" }}{% else %}—{% endif %}</td>
-                        <td>
-                            <form method="post" action="{% url 'principal:remover_item_carrinho' linha.produto_id %}">
-                                {% csrf_token %}
-                                <button type="submit">Remover</button>
-                            </form>
-                        </td>
+    <div class="layout-duas-colunas layout-duas-colunas--larga">
+        <div class="tabela-responsiva">
+            <table class="tabela" role="table">
+                <thead role="rowgroup">
+                    <tr role="row">
+                        <th scope="col" role="columnheader">Produto / unidade</th>
+                        <th scope="col" role="columnheader">Preço unitário</th>
+                        <th scope="col" role="columnheader">Quantidade</th>
+                        <th scope="col" role="columnheader">Valor do item</th>
+                        <th scope="col" role="columnheader">Ação</th>
                     </tr>
-                    {% endwith %}
-                {% endfor %}
-            </tbody>
-        </table>
+                </thead>
+                <tbody role="rowgroup">
+                    {% for item in itens %}
+                        {% with linha=item.linha %}
+                        <tr role="row">
+                            <td role="cell" class="celula-titulo">
+                                {% if linha.encontrado %}
+                                    <span class="texto-longo">{{ linha.produto.nome }} — {{ linha.produto.unidade }}</span>
+                                {% else %}
+                                    Produto não encontrado (código {{ linha.produto_id }})
+                                {% endif %}
+                                {% if not linha.disponivel %}<br><strong>Indisponível</strong>{% endif %}
+                                {% if not linha.consistente %}<br><strong>Quantidade inválida</strong>{% endif %}
+                            </td>
+                            <td role="cell" data-label="Preço unitário">{% if linha.encontrado %}<span class="valor">R$ {{ linha.produto.preco|floatformat:"2" }}</span>{% else %}—{% endif %}</td>
+                            {% if linha.disponivel %}
+                                <td role="cell" class="celula-bloco">
+                                    <form method="post" action="{% url 'principal:atualizar_item_carrinho' linha.produto_id %}" class="form-quantidade">
+                                        {% csrf_token %}
+                                        {% with campo=item.form.quantidade %}
+                                            <div>
+                                                {# Visível no cartão móvel; na tabela o cabeçalho da coluna já identifica o campo. #}
+                                                <label for="{{ campo.id_for_label }}" class="rotulo-quantidade-carrinho">Quantidade<span class="visualmente-oculto"> de {{ linha.produto.nome }}</span></label>
+                                                {{ campo.errors }}
+                                                {{ campo }}
+                                            </div>
+                                        {% endwith %}
+                                        {% if item.form.errors and linha.consistente %}<p>Quantidade mantida: {{ linha.quantidade }}</p>{% endif %}
+                                        <button type="submit" class="botao botao--secundario">Atualizar quantidade<span class="visualmente-oculto"> de {{ linha.produto.nome }}</span></button>
+                                    </form>
+                                </td>
+                            {% else %}
+                                <td role="cell" data-label="Quantidade">{% if linha.consistente %}{{ linha.quantidade }}{% else %}—{% endif %}</td>
+                            {% endif %}
+                            <td role="cell" data-label="Valor do item">{% if linha.valor is not None %}<span class="valor">R$ {{ linha.valor|floatformat:"2" }}</span>{% else %}—{% endif %}</td>
+                            <td role="cell" class="celula-acao">
+                                <form method="post" action="{% url 'principal:remover_item_carrinho' linha.produto_id %}">
+                                    {% csrf_token %}
+                                    <button type="submit" class="botao botao--secundario">Remover<span class="visualmente-oculto"> {% if linha.encontrado %}{{ linha.produto.nome }}{% else %}produto não encontrado (código {{ linha.produto_id }}){% endif %} do carrinho</span></button>
+                                </form>
+                            </td>
+                        </tr>
+                        {% endwith %}
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        <div class="resumo-carrinho">
+            <p>Subtotal: <strong class="valor">R$ {{ resumo.subtotal|floatformat:"2" }}</strong></p>
+            <p>Taxa de entrega informada na etapa de endereço.</p>
+            <p class="acao-principal"><a href="{% url 'principal:checkout' %}">Finalizar compra</a></p>
+        </div>
     </div>
-    <p>Subtotal: <strong>R$ {{ resumo.subtotal|floatformat:"2" }}</strong></p>
-    <p>Taxa de entrega informada na etapa de endereço.</p>
-    <p><a href="{% url 'principal:checkout' %}">Finalizar compra</a></p>
 {% endif %}
 
 <p><a href="{% url 'principal:catalogo' %}">Continuar comprando</a></p>

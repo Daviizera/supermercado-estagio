@@ -3,19 +3,29 @@
 {% block title %}{{ produto.nome }} — Sistema de Pedidos Online{% endblock %}
 
 {% block content %}
-<h1>{{ produto.nome }}</h1>
-<dl>
-    <dt>Categoria</dt>
-    <dd>{{ produto.categoria.nome }}</dd>
-    <dt>Preço</dt>
-    <dd>R$ {{ produto.preco|floatformat:"2" }}</dd>
-    <dt>Unidade</dt>
-    <dd>{{ produto.unidade }}</dd>
-</dl>
-<form method="post" action="{% url 'principal:adicionar_ao_carrinho' produto.pk %}" class="form-quantidade">
-    {% csrf_token %}
-    {{ form.as_div }}
-    <button type="submit">Adicionar ao carrinho</button>
-</form>
-<p><a href="{% url 'principal:catalogo' %}">Voltar ao catálogo</a></p>
+<p class="link-voltar"><a href="{% url 'principal:catalogo' %}">Voltar ao catálogo</a></p>
+
+<div class="produto-detalhe">
+    <div class="produto-detalhe__info">
+        <h1 class="texto-longo">{{ produto.nome }}</h1>
+        <dl class="produto-detalhe__dados">
+            <dt>Categoria</dt>
+            <dd>{{ produto.categoria.nome }}</dd>
+            <dt>Unidade</dt>
+            <dd class="texto-longo">{{ produto.unidade }}</dd>
+        </dl>
+    </div>
+
+    <div class="painel-compra">
+        <p class="painel-compra__preco">
+            <span class="painel-compra__rotulo">Preço</span>
+            <strong class="preco preco--destaque valor">R$ {{ produto.preco|floatformat:"2" }}</strong>
+        </p>
+        <form method="post" action="{% url 'principal:adicionar_ao_carrinho' produto.pk %}" class="form-painel">
+            {% csrf_token %}
+            {{ form.as_div }}
+            <button type="submit" class="botao">Adicionar ao carrinho</button>
+        </form>
+    </div>
+</div>
 {% endblock %}

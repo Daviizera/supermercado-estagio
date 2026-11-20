@@ -9,36 +9,36 @@
     <dt>Data/hora</dt>
     <dd>{{ pedido.criado_em|date:"d/m/Y H:i" }}</dd>
     <dt>Cliente</dt>
-    <dd>{{ pedido.cliente.get_username }}</dd>
+    <dd class="texto-longo">{{ pedido.cliente.get_username }}</dd>
     <dt>Telefone</dt>
     <dd>{{ pedido.telefone }}</dd>
     <dt>Logradouro</dt>
-    <dd>{{ pedido.logradouro }}</dd>
+    <dd class="texto-longo">{{ pedido.logradouro }}</dd>
     <dt>Número</dt>
     <dd>{{ pedido.numero }}</dd>
     <dt>Complemento</dt>
-    <dd>{{ pedido.complemento|default:"—" }}</dd>
+    <dd class="texto-longo">{{ pedido.complemento|default:"—" }}</dd>
     <dt>Bairro</dt>
-    <dd>{{ pedido.bairro }}</dd>
+    <dd class="texto-longo">{{ pedido.bairro }}</dd>
 </dl>
 
-<div class="tabela-rolagem">
-    <table class="tabela-carrinho">
-        <thead>
-            <tr>
-                <th scope="col">Produto / unidade</th>
-                <th scope="col">Quantidade</th>
-                <th scope="col">Preço unitário</th>
-                <th scope="col">Valor do item</th>
+<div class="tabela-responsiva">
+    <table class="tabela" role="table">
+        <thead role="rowgroup">
+            <tr role="row">
+                <th scope="col" role="columnheader">Produto / unidade</th>
+                <th scope="col" role="columnheader">Quantidade</th>
+                <th scope="col" role="columnheader">Preço unitário</th>
+                <th scope="col" role="columnheader">Valor do item</th>
             </tr>
         </thead>
-        <tbody>
+        <tbody role="rowgroup">
             {% for linha in itens %}
-                <tr>
-                    <td>{{ linha.item.nome_produto }} — {{ linha.item.unidade }}</td>
-                    <td>{{ linha.item.quantidade }}</td>
-                    <td>R$ {{ linha.item.preco_unitario|floatformat:"2" }}</td>
-                    <td>R$ {{ linha.valor|floatformat:"2" }}</td>
+                <tr role="row">
+                    <td role="cell" class="celula-titulo"><span class="texto-longo">{{ linha.item.nome_produto }} — {{ linha.item.unidade }}</span></td>
+                    <td role="cell" data-label="Quantidade">{{ linha.item.quantidade }}</td>
+                    <td role="cell" data-label="Preço unitário"><span class="valor">R$ {{ linha.item.preco_unitario|floatformat:"2" }}</span></td>
+                    <td role="cell" data-label="Valor do item"><span class="valor">R$ {{ linha.valor|floatformat:"2" }}</span></td>
                 </tr>
             {% endfor %}
         </tbody>
@@ -47,11 +47,11 @@
 
 <dl class="resumo-pedido">
     <dt>Subtotal</dt>
-    <dd>R$ {{ pedido.subtotal|floatformat:"2" }}</dd>
+    <dd class="valor">R$ {{ pedido.subtotal|floatformat:"2" }}</dd>
     <dt>Taxa de entrega</dt>
-    <dd>R$ {{ pedido.taxa_entrega|floatformat:"2" }}</dd>
+    <dd class="valor">R$ {{ pedido.taxa_entrega|floatformat:"2" }}</dd>
     <dt>Total</dt>
-    <dd><strong>R$ {{ pedido.total|floatformat:"2" }}</strong></dd>
+    <dd class="valor"><strong>R$ {{ pedido.total|floatformat:"2" }}</strong></dd>
     <dt>Pagamento</dt>
     <dd>{{ pedido.get_pagamento_display }}</dd>
     <dt>Estado atual</dt>
@@ -62,14 +62,26 @@
     <p>Estado terminal: nenhuma alteração disponível.</p>
 {% elif acoes %}
     <h2>Atualizar estado</h2>
-    {% for acao in acoes %}
-        <form method="post" action="{% url 'principal:equipe_alterar_estado' pedido.pk %}" class="form-estado">
-            {% csrf_token %}
-            <input type="hidden" name="estado_atual" value="{{ pedido.estado }}">
-            <input type="hidden" name="novo_estado" value="{{ acao.estado }}">
-            <button type="submit">{{ acao.rotulo }}</button>
-        </form>
-    {% endfor %}
+    <div class="acoes-estado">
+        {% for acao in acoes %}{% if not acao.perigo %}
+            <form method="post" action="{% url 'principal:equipe_alterar_estado' pedido.pk %}" class="form-estado">
+                {% csrf_token %}
+                <input type="hidden" name="estado_atual" value="{{ pedido.estado }}">
+                <input type="hidden" name="novo_estado" value="{{ acao.estado }}">
+                <button type="submit" class="botao">{{ acao.rotulo }}</button>
+            </form>
+        {% endif %}{% endfor %}
+    </div>
+    {% for acao in acoes %}{% if acao.perigo %}
+        <div class="acoes-estado acoes-estado--perigo">
+            <form method="post" action="{% url 'principal:equipe_alterar_estado' pedido.pk %}" class="form-estado">
+                {% csrf_token %}
+                <input type="hidden" name="estado_atual" value="{{ pedido.estado }}">
+                <input type="hidden" name="novo_estado" value="{{ acao.estado }}">
+                <button type="submit" class="botao botao--perigo">{{ acao.rotulo }}</button>
+            </form>
+        </div>
+    {% endif %}{% endfor %}
 {% endif %}
 
 <p><a href="{% url 'principal:equipe_pedidos' %}">Voltar à lista</a></p>

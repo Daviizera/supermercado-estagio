@@ -1,5 +1,4 @@
-{% load static %}
-<!DOCTYPE html>
+{% load static %}<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
     <meta charset="utf-8">
@@ -8,37 +7,86 @@
     <link rel="stylesheet" href="{% static 'css/estilos.css' %}">
 </head>
 <body>
-    <header>
-        <nav aria-label="Navegação principal">
-            <a href="{% url 'principal:inicio' %}">Início</a>
-            <a href="{% url 'principal:catalogo' %}">Catálogo</a>
-            <a href="{% url 'principal:carrinho' %}">Carrinho</a>
-            {% if request.user.is_authenticated %}
-                <a href="{% url 'principal:meus_pedidos' %}">Meus pedidos</a>
-                {% if request.user.is_staff and perms.principal.view_pedido %}
-                    <a href="{% url 'principal:equipe_pedidos' %}">Gerenciamento de pedidos</a>
-                {% endif %}
-                <a href="{% url 'principal:minha_conta' %}">Minha conta</a>
-                <span>Usuário: {{ request.user.get_username }}</span>
-                <form method="post" action="{% url 'principal:logout' %}">
-                    {% csrf_token %}
-                    <button type="submit">Sair</button>
-                </form>
-            {% else %}
-                <a href="{% url 'principal:login' %}">Login</a>
-                <a href="{% url 'principal:cadastro' %}">Cadastro</a>
-            {% endif %}
-        </nav>
-    </header>
-    <main>
-        {% if messages %}
-            <ul class="mensagens" aria-live="polite">
-                {% for message in messages %}
-                    <li>{{ message }}</li>
-                {% endfor %}
+{% with rota=request.resolver_match.url_name %}
+<a class="pular-conteudo" href="#conteudo">Pular para o conteúdo</a>
+<header class="cabecalho">
+    <div class="cabecalho__interno">
+        <a class="marca" href="{% url 'principal:inicio' %}">Supermercado · Pedidos online</a>
+        <nav class="nav-principal" aria-label="Navegação principal">
+            <ul>
+                <li><a href="{% url 'principal:inicio' %}"{% if rota == 'inicio' %} aria-current="page"{% endif %}>Início</a></li>
+                <li><a href="{% url 'principal:catalogo' %}"{% if rota == 'catalogo' %} aria-current="page"{% endif %}>Catálogo</a></li>
+                <li><a href="{% url 'principal:carrinho' %}"{% if rota == 'carrinho' %} aria-current="page"{% endif %}>Carrinho</a></li>
             </ul>
-        {% endif %}
-        {% block content %}{% endblock %}
-    </main>
+        </nav>
+        {% comment %}
+            A área da conta aparece duas vezes: em linha a partir de 64rem e dentro de
+            <details> em telas menores. O CSS exibe somente uma delas (display: none na outra).
+        {% endcomment %}
+        <nav class="nav-conta nav-conta--larga" aria-label="Conta">
+            <ul>
+                {% if request.user.is_authenticated %}
+                    <li><a href="{% url 'principal:meus_pedidos' %}"{% if rota == 'meus_pedidos' %} aria-current="page"{% endif %}>Meus pedidos</a></li>
+                    {% if request.user.is_staff and perms.principal.view_pedido %}
+                        <li><a href="{% url 'principal:equipe_pedidos' %}"{% if rota == 'equipe_pedidos' %} aria-current="page"{% endif %}>Gerenciamento de pedidos</a></li>
+                    {% endif %}
+                    <li><a href="{% url 'principal:minha_conta' %}"{% if rota == 'minha_conta' %} aria-current="page"{% endif %}>Minha conta</a></li>
+                    <li class="nav-conta__usuario texto-longo">Usuário: {{ request.user.get_username }}</li>
+                    <li>
+                        <form method="post" action="{% url 'principal:logout' %}">
+                            {% csrf_token %}
+                            <button type="submit" class="botao botao--secundario">Sair</button>
+                        </form>
+                    </li>
+                {% else %}
+                    <li><a href="{% url 'principal:login' %}"{% if rota == 'login' %} aria-current="page"{% endif %}>Login</a></li>
+                    <li><a href="{% url 'principal:cadastro' %}"{% if rota == 'cadastro' %} aria-current="page"{% endif %}>Cadastro</a></li>
+                {% endif %}
+            </ul>
+        </nav>
+        <details class="menu-movel">
+            <summary>Menu</summary>
+            <nav class="nav-conta" aria-label="Conta">
+                <ul>
+                    {% if request.user.is_authenticated %}
+                        <li class="nav-conta__usuario texto-longo">Usuário: {{ request.user.get_username }}</li>
+                        <li><a href="{% url 'principal:meus_pedidos' %}"{% if rota == 'meus_pedidos' %} aria-current="page"{% endif %}>Meus pedidos</a></li>
+                        {% if request.user.is_staff and perms.principal.view_pedido %}
+                            <li><a href="{% url 'principal:equipe_pedidos' %}"{% if rota == 'equipe_pedidos' %} aria-current="page"{% endif %}>Gerenciamento de pedidos</a></li>
+                        {% endif %}
+                        <li><a href="{% url 'principal:minha_conta' %}"{% if rota == 'minha_conta' %} aria-current="page"{% endif %}>Minha conta</a></li>
+                        <li>
+                            <form method="post" action="{% url 'principal:logout' %}">
+                                {% csrf_token %}
+                                <button type="submit" class="botao botao--secundario">Sair</button>
+                            </form>
+                        </li>
+                    {% else %}
+                        <li><a href="{% url 'principal:login' %}"{% if rota == 'login' %} aria-current="page"{% endif %}>Login</a></li>
+                        <li><a href="{% url 'principal:cadastro' %}"{% if rota == 'cadastro' %} aria-current="page"{% endif %}>Cadastro</a></li>
+                    {% endif %}
+                </ul>
+            </nav>
+        </details>
+    </div>
+</header>
+{% endwith %}
+
+<main id="conteudo" class="conteudo" tabindex="-1">
+    {% if messages %}
+        <ul class="mensagens" aria-live="polite">
+            {% for message in messages %}
+                <li class="mensagem mensagem--{{ message.level_tag|default:'info' }}">
+                    <span class="visualmente-oculto">{% if message.level_tag == 'error' %}Erro:{% elif message.level_tag == 'warning' %}Atenção:{% elif message.level_tag == 'success' %}Sucesso:{% else %}Informação:{% endif %} </span>{{ message }}
+                </li>
+            {% endfor %}
+        </ul>
+    {% endif %}
+    {% block content %}{% endblock %}
+</main>
+
+<footer class="rodape">
+    <p>Supermercado · Pedidos online</p>
+</footer>
 </body>
 </html>

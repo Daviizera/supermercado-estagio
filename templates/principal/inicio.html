@@ -1,8 +1,10 @@
 {% extends 'base.html' %}
 
 {% block content %}
-<h1>Sistema de Pedidos Online</h1>
-<h2>Supermercado</h2>
-<p>Projeto de estágio em desenvolvimento web</p>
-<p>Etapa inicial do estágio — Semana 1.</p>
+<section class="apresentacao" aria-labelledby="titulo-inicio">
+    <h1 id="titulo-inicio">Sistema de Pedidos Online</h1>
+    <p class="apresentacao__texto">Confira os produtos disponíveis e monte seu pedido online.</p>
+    <p><a class="botao" href="{% url 'principal:catalogo' %}">Ver catálogo de produtos</a></p>
+    <p class="apresentacao__nota">Projeto de estágio em desenvolvimento web</p>
+</section>
 {% endblock %}

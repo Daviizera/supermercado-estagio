@@ -4,29 +4,36 @@
 
 {% block content %}
 <h1>Catálogo de produtos</h1>
-<form method="get" action="{% url 'principal:catalogo' %}" class="filtros-catalogo">
+<form method="get" action="{% url 'principal:catalogo' %}" class="filtros-catalogo" role="search" aria-label="Filtrar produtos">
     {{ form.as_div }}
-    <button type="submit">Pesquisar</button>
-    <a href="{% url 'principal:catalogo' %}">Limpar filtros</a>
+    <div class="acoes-formulario">
+        <button type="submit" class="botao">Pesquisar</button>
+        <a href="{% url 'principal:catalogo' %}">Limpar filtros</a>
+    </div>
 </form>
 
 <ul class="lista-produtos">
     {% for produto in produtos %}
         <li>
-            <article>
-                <h2><a href="{% url 'principal:detalhe_produto' produto.pk %}">{{ produto.nome }}</a></h2>
-                <p>Categoria: {{ produto.categoria.nome }}</p>
-                <p><strong>R$ {{ produto.preco|floatformat:"2" }}</strong> — {{ produto.unidade }}</p>
-                <form method="post" action="{% url 'principal:adicionar_ao_carrinho' produto.pk %}" class="form-quantidade">
+            <article class="cartao-produto">
+                <h2 class="cartao-produto__nome texto-longo"><a href="{% url 'principal:detalhe_produto' produto.pk %}">{{ produto.nome }}</a></h2>
+                <p class="etiqueta-categoria"><span class="visualmente-oculto">Categoria: </span>{{ produto.categoria.nome }}</p>
+                <p class="cartao-produto__preco">
+                    <strong class="preco valor">R$ {{ produto.preco|floatformat:"2" }}</strong>
+                    <span class="cartao-produto__unidade texto-longo"><span class="visualmente-oculto">Unidade: </span>{{ produto.unidade }}</span>
+                </p>
+                <form method="post" action="{% url 'principal:adicionar_ao_carrinho' produto.pk %}" class="form-compra">
                     {% csrf_token %}
-                    <label for="id_quantidade_{{ produto.pk }}">Quantidade</label>
-                    <input type="number" name="quantidade" id="id_quantidade_{{ produto.pk }}" value="1" min="1" step="1" required>
-                    <button type="submit">Adicionar ao carrinho</button>
+                    <div class="form-compra__quantidade">
+                        <label for="id_quantidade_{{ produto.pk }}">Quantidade<span class="visualmente-oculto"> de {{ produto.nome }}</span></label>
+                        <input type="number" name="quantidade" id="id_quantidade_{{ produto.pk }}" value="1" min="1" step="1" required>
+                    </div>
+                    <button type="submit" class="botao">Adicionar ao carrinho<span class="visualmente-oculto">: {{ produto.nome }}</span></button>
                 </form>
             </article>
         </li>
     {% empty %}
-        <li>
+        <li class="lista-produtos__vazio">
             {% if form.errors %}
                 <p>Corrija os filtros para consultar os produtos.</p>
             {% elif filtros_ativos %}

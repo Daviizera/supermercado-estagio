@@ -1,159 +1,1083 @@
+/*
+ * Identidade visual — Supermercado · Pedidos online
+ *
+ * Mobile-first: as regras base valem para telas estreitas; os pontos de quebra
+ * (40rem, 64rem e 80rem) acrescentam colunas. Cores, espaçamentos, bordas e raios
+ * vêm somente das variáveis abaixo.
+ */
+
+:root {
+    /* Cores */
+    --cor-primaria: #1e6b3a;
+    --cor-primaria-hover: #17552e;
+    --cor-texto: #1f2a24;
+    --cor-texto-secundario: #4a5a50;
+    --cor-fundo: #f4f6f3;
+    --cor-superficie: #ffffff;
+    --cor-texto-sobre-primaria: var(--cor-superficie);
+    --cor-destaque: #8a4b00;
+    --cor-destaque-fundo: #fff4e5;
+    --cor-erro: #b42318;
+    --cor-erro-fundo: #fdecea;
+    --cor-sucesso: var(--cor-primaria);
+    --cor-sucesso-fundo: #e8f3ec;
+    --cor-borda: #6b7a70;
+    --cor-divisoria: #d3dbd5;
+    --cor-foco: #b85c00;
+    --sombra-menu: 0 0.25rem 0.75rem rgb(31 42 36 / 0.2);
+
+    /* Tipografia */
+    --fonte-base: system-ui, "Segoe UI", Roboto, Arial, sans-serif;
+    --texto-pequeno: 0.875rem;
+    --texto-titulo-cartao: 1.125rem;
+    --texto-destaque: 1.125rem;
+    --texto-preco: 1.375rem;
+    --texto-preco-destaque: 2rem;
+
+    /* Espaçamentos */
+    --espaco-1: 0.25rem;
+    --espaco-2: 0.5rem;
+    --espaco-3: 0.75rem;
+    --espaco-4: 1rem;
+    --espaco-5: 1.5rem;
+    --espaco-6: 2rem;
+    --espaco-7: 3rem;
+
+    /* Bordas e raios */
+    --borda-fina: 1px solid var(--cor-divisoria);
+    --borda-controle: 1px solid var(--cor-borda);
+    --espessura-marcador: 4px;
+    --raio-pequeno: 0.25rem;
+    --raio-medio: 0.5rem;
+
+    /* Foco, alvos e larguras */
+    --contorno-foco: 3px solid var(--cor-foco);
+    --alvo-minimo: 2.75rem; /* 44px */
+    --largura-listagem: 80rem;
+    --largura-formulario: 32rem;
+    --largura-coluna-lateral: 22rem;
+}
+
+/* ---------- Base ---------- */
+
+*,
+*::before,
+*::after {
+    box-sizing: border-box;
+}
+
 body {
-    margin: 0;
-    font-family: Arial, sans-serif;
-    line-height: 1.5;
-    color: #24352b;
-    background-color: #f5f7f5;
-}
-
-main {
-    max-width: 48rem;
-    margin: 3rem auto;
-    padding: 0 1.5rem;
-}
-
-header {
-    max-width: 48rem;
-    margin: 1.5rem auto;
-    padding: 0 1.5rem;
-}
-
-nav {
     display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: 1rem;
+    flex-direction: column;
+    min-height: 100vh;
+    margin: 0;
+    font-family: var(--fonte-base);
+    line-height: 1.5;
+    color: var(--cor-texto);
+    background-color: var(--cor-fundo);
 }
 
-nav span,
-main {
-    overflow-wrap: anywhere;
+h1,
+h2,
+h3 {
+    line-height: 1.25;
+}
+
+h1 {
+    margin: 0 0 var(--espaco-5);
+    font-size: 1.75rem;
 }
 
 a {
-    color: #245c39;
+    color: var(--cor-primaria);
+    text-underline-offset: 0.15em;
 }
 
-.form-conta {
-    max-width: 30rem;
+a:hover {
+    color: var(--cor-primaria-hover);
 }
 
-.form-conta > div,
-.filtros-catalogo > div {
-    margin-bottom: 1.25rem;
+:focus-visible {
+    outline: var(--contorno-foco);
+    outline-offset: 2px;
 }
 
-.form-conta label,
-.filtros-catalogo label {
-    display: block;
-    font-weight: bold;
+/* O <main> recebe foco pelo link de salto, mas não é um controle. */
+main:focus {
+    outline: none;
 }
 
-.form-conta input,
-.form-conta select,
-.filtros-catalogo input,
-.filtros-catalogo select {
-    box-sizing: border-box;
+/* Quebra agressiva somente onde há texto longo sem espaços (nomes, endereços, usuários). */
+.texto-longo {
+    min-width: 0;
+    overflow-wrap: anywhere;
+}
+
+.valor {
+    white-space: nowrap;
+    font-variant-numeric: tabular-nums;
+}
+
+.texto-secundario {
+    color: var(--cor-texto-secundario);
+}
+
+.visualmente-oculto {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: -1px;
+    padding: 0;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+    border: 0;
+}
+
+/* ---------- Estrutura ---------- */
+
+.pular-conteudo {
+    position: absolute;
+    top: var(--espaco-2);
+    left: var(--espaco-2);
+    z-index: 10;
+    display: inline-flex;
+    align-items: center;
+    min-height: var(--alvo-minimo);
+    padding: 0 var(--espaco-4);
+    border: var(--borda-controle);
+    border-radius: var(--raio-pequeno);
+    color: var(--cor-primaria);
+    background-color: var(--cor-superficie);
+    font-weight: 600;
+    transform: translateY(-200%);
+}
+
+.pular-conteudo:focus {
+    transform: none;
+}
+
+.cabecalho__interno,
+.conteudo,
+.rodape {
     width: 100%;
-    padding: 0.6rem;
-    border: 1px solid #64766a;
-    border-radius: 0.25rem;
-    font: inherit;
+    max-width: var(--largura-listagem);
+    margin-inline: auto;
+    padding-inline: var(--espaco-4);
 }
 
-button {
-    padding: 0.6rem 1rem;
-    border: 1px solid #245c39;
-    border-radius: 0.25rem;
-    color: white;
-    background-color: #245c39;
-    font: inherit;
-    cursor: pointer;
+.cabecalho {
+    border-bottom: var(--borda-fina);
+    background-color: var(--cor-superficie);
 }
 
-a:focus-visible,
-button:focus-visible,
-input:focus-visible,
-select:focus-visible {
-    outline: 3px solid #825e00;
-    outline-offset: 3px;
+.cabecalho__interno {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas:
+        "marca menu"
+        "principal principal";
+    align-items: center;
+    gap: var(--espaco-1) var(--espaco-4);
+    padding-block: var(--espaco-2);
 }
 
-.errorlist {
-    color: #a12121;
+.marca {
+    grid-area: marca;
+    display: inline-flex;
+    align-items: center;
+    min-height: var(--alvo-minimo);
+    color: var(--cor-primaria);
+    font-size: 1.125rem;
+    font-weight: 700;
+    text-decoration: none;
 }
 
-.helptext {
-    font-size: 0.9rem;
+.nav-principal {
+    grid-area: principal;
 }
 
-.mensagens {
-    padding: 1rem 2rem;
-    border: 1px solid #64766a;
-    background-color: #e7f2e9;
-}
-
-.filtros-catalogo {
-    max-width: 30rem;
-    margin-bottom: 2rem;
-}
-
-.filtros-catalogo > a {
-    margin-left: 1rem;
-}
-
-.lista-produtos {
+.nav-principal ul,
+.nav-conta ul {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--espaco-1) var(--espaco-2);
+    margin: 0;
     padding: 0;
     list-style: none;
 }
 
-.lista-produtos > li {
-    padding: 1rem 0;
-    border-bottom: 1px solid #64766a;
+.nav-principal a,
+.nav-conta a {
+    display: inline-flex;
+    align-items: center;
+    min-height: var(--alvo-minimo);
+    padding-inline: var(--espaco-3);
+    border-radius: var(--raio-pequeno);
+    color: var(--cor-texto);
+    text-decoration: none;
 }
 
+.nav-principal li:first-child a {
+    padding-left: 0;
+}
+
+.nav-principal a:hover,
+.nav-conta a:hover {
+    color: var(--cor-primaria);
+    text-decoration: underline;
+}
+
+.nav-principal a[aria-current="page"],
+.nav-conta a[aria-current="page"] {
+    color: var(--cor-primaria);
+    font-weight: 700;
+    text-decoration: underline;
+    text-decoration-thickness: 3px;
+}
+
+.nav-conta__usuario {
+    color: var(--cor-texto-secundario);
+    font-size: var(--texto-pequeno);
+}
+
+/* Na tela estreita, a área da conta fica dentro do <details>. */
+.nav-conta--larga {
+    display: none;
+}
+
+.menu-movel {
+    grid-area: menu;
+    position: relative;
+}
+
+.menu-movel summary {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--espaco-2);
+    min-height: var(--alvo-minimo);
+    min-width: var(--alvo-minimo);
+    padding-inline: var(--espaco-4);
+    border: var(--borda-controle);
+    border-radius: var(--raio-pequeno);
+    color: var(--cor-texto);
+    background-color: var(--cor-superficie);
+    font-weight: 600;
+    cursor: pointer;
+    list-style: none;
+}
+
+.menu-movel summary::-webkit-details-marker {
+    display: none;
+}
+
+.menu-movel summary::after {
+    content: "▾";
+    content: "▾" / "";
+}
+
+.menu-movel[open] summary::after {
+    content: "▴";
+    content: "▴" / "";
+}
+
+.menu-movel > .nav-conta {
+    position: absolute;
+    top: calc(100% + var(--espaco-1));
+    right: 0;
+    z-index: 5;
+    width: max-content;
+    min-width: 14rem;
+    max-width: calc(100vw - 2 * var(--espaco-4));
+    padding: var(--espaco-2);
+    border: var(--borda-controle);
+    border-radius: var(--raio-medio);
+    background-color: var(--cor-superficie);
+    box-shadow: var(--sombra-menu);
+}
+
+.menu-movel > .nav-conta ul {
+    flex-direction: column;
+    align-items: stretch;
+}
+
+.menu-movel > .nav-conta li {
+    display: flex;
+}
+
+.menu-movel > .nav-conta a,
+.menu-movel > .nav-conta form,
+.menu-movel > .nav-conta button {
+    width: 100%;
+}
+
+.menu-movel .nav-conta__usuario {
+    padding: var(--espaco-2) var(--espaco-3);
+    border-bottom: var(--borda-fina);
+}
+
+.conteudo {
+    flex: 1 0 auto;
+    padding-block: var(--espaco-5) var(--espaco-7);
+}
+
+.rodape {
+    padding-block: var(--espaco-5);
+    border-top: var(--borda-fina);
+    color: var(--cor-texto-secundario);
+    font-size: var(--texto-pequeno);
+}
+
+.rodape p {
+    margin: 0;
+}
+
+/* ---------- Mensagens ---------- */
+
+.mensagens {
+    display: grid;
+    gap: var(--espaco-2);
+    margin: 0 0 var(--espaco-5);
+    padding: 0;
+    list-style: none;
+}
+
+.mensagem {
+    margin: 0 0 var(--espaco-4);
+    padding: var(--espaco-3) var(--espaco-4);
+    border: var(--borda-fina);
+    border-left: var(--espessura-marcador) solid var(--cor-borda);
+    border-radius: var(--raio-pequeno);
+    color: var(--cor-texto);
+    background-color: var(--cor-superficie);
+}
+
+.mensagens .mensagem {
+    margin: 0;
+}
+
+.mensagem--success {
+    border-left-color: var(--cor-sucesso);
+    background-color: var(--cor-sucesso-fundo);
+}
+
+.mensagem--error {
+    border-left-color: var(--cor-erro);
+    color: var(--cor-erro);
+    background-color: var(--cor-erro-fundo);
+}
+
+.mensagem--warning {
+    border-left-color: var(--cor-destaque);
+    color: var(--cor-destaque);
+    background-color: var(--cor-destaque-fundo);
+}
+
+.mensagem--info {
+    border-left-color: var(--cor-borda);
+}
+
+.aviso-carrinho {
+    margin: 0 0 var(--espaco-4);
+    padding: var(--espaco-3) var(--espaco-4);
+    border: 1px solid var(--cor-erro);
+    border-left-width: var(--espessura-marcador);
+    border-radius: var(--raio-pequeno);
+    color: var(--cor-erro);
+    background-color: var(--cor-erro-fundo);
+}
+
+.aviso-carrinho p {
+    margin: 0 0 var(--espaco-2);
+}
+
+/* ---------- Botões e links de ação ---------- */
+
+button,
+.botao,
+.acao-principal > a {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: var(--alvo-minimo);
+    padding: var(--espaco-2) var(--espaco-4);
+    border: 2px solid var(--cor-primaria);
+    border-radius: var(--raio-pequeno);
+    color: var(--cor-texto-sobre-primaria);
+    background-color: var(--cor-primaria);
+    font: inherit;
+    font-weight: 600;
+    line-height: 1.25;
+    text-align: center;
+    text-decoration: none;
+    cursor: pointer;
+}
+
+button:hover,
+.botao:hover,
+.acao-principal > a:hover {
+    border-color: var(--cor-primaria-hover);
+    color: var(--cor-texto-sobre-primaria);
+    background-color: var(--cor-primaria-hover);
+}
+
+.botao--secundario {
+    color: var(--cor-primaria);
+    background-color: var(--cor-superficie);
+}
+
+.botao--secundario:hover {
+    border-color: var(--cor-primaria-hover);
+    color: var(--cor-primaria-hover);
+    background-color: var(--cor-sucesso-fundo);
+}
+
+.botao--perigo {
+    border-color: var(--cor-erro);
+    color: var(--cor-erro);
+    background-color: var(--cor-superficie);
+}
+
+.botao--perigo:hover {
+    border-color: var(--cor-erro);
+    color: var(--cor-erro);
+    background-color: var(--cor-erro-fundo);
+}
+
+/* Links isolados em parágrafo recebem área de toque mínima. */
+.conteudo p > a:only-child,
+.tabela td > a:only-child,
+.links-rodape a,
+.acoes-formulario a {
+    display: inline-flex;
+    align-items: center;
+    min-height: var(--alvo-minimo);
+}
+
+.links-rodape {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--espaco-2) var(--espaco-5);
+}
+
+.acao-principal {
+    margin-top: var(--espaco-4);
+}
+
+/* ---------- Formulários ---------- */
+
+.form-conta {
+    max-width: var(--largura-formulario);
+}
+
+.form-conta > div,
+.filtros-catalogo > div {
+    margin-bottom: var(--espaco-4);
+}
+
+label {
+    font-weight: 600;
+}
+
+.form-conta label,
+.filtros-catalogo label,
 .form-quantidade label {
     display: block;
-    font-weight: bold;
+    margin-bottom: var(--espaco-1);
 }
 
-.form-quantidade input {
-    box-sizing: border-box;
-    width: 8rem;
-    max-width: 100%;
-    margin: 0.25rem 0 0.5rem;
-    padding: 0.6rem;
-    border: 1px solid #64766a;
-    border-radius: 0.25rem;
+input:not([type="hidden"]):not([type="checkbox"]):not([type="radio"]),
+select {
+    width: 100%;
+    min-height: var(--alvo-minimo);
+    padding: var(--espaco-2) var(--espaco-3);
+    border: var(--borda-controle);
+    border-radius: var(--raio-pequeno);
+    color: var(--cor-texto);
+    background-color: var(--cor-superficie);
     font: inherit;
 }
 
-/* A tabela rola dentro do próprio contêiner, sem rolagem horizontal da página. */
-.tabela-rolagem {
-    overflow-x: auto;
+/* O Django marca campos com erro com aria-invalid="true". */
+input[aria-invalid="true"]:not([type="hidden"]):not([type="checkbox"]):not([type="radio"]),
+select[aria-invalid="true"] {
+    border: 2px solid var(--cor-erro);
 }
 
-.tabela-carrinho {
+.errorlist {
+    margin: var(--espaco-1) 0;
+    padding: 0;
+    list-style: none;
+    color: var(--cor-erro);
+    font-weight: 600;
+}
+
+.helptext {
+    display: block;
+    margin-top: var(--espaco-1);
+    color: var(--cor-texto-secundario);
+    font-size: var(--texto-pequeno);
+}
+
+.helptext ul {
+    margin: var(--espaco-1) 0 0;
+    padding-left: var(--espaco-5);
+}
+
+.acoes-formulario {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--espaco-2) var(--espaco-5);
+}
+
+.form-quantidade > div {
+    margin-bottom: var(--espaco-2);
+}
+
+.form-quantidade input:not([type="hidden"]) {
+    max-width: 8rem;
+    margin-bottom: var(--espaco-2);
+}
+
+/* ---------- Página inicial ---------- */
+
+.apresentacao {
+    max-width: 48rem;
+    padding: var(--espaco-6) var(--espaco-5);
+    border: var(--borda-fina);
+    border-left: var(--espessura-marcador) solid var(--cor-primaria);
+    border-radius: var(--raio-medio);
+    background-color: var(--cor-superficie);
+}
+
+.apresentacao h1 {
+    margin-bottom: var(--espaco-3);
+}
+
+.apresentacao__texto {
+    margin: 0 0 var(--espaco-5);
+    font-size: var(--texto-destaque);
+}
+
+.apresentacao p:last-child {
+    margin-bottom: 0;
+}
+
+.apresentacao__nota {
+    margin-top: var(--espaco-5);
+    color: var(--cor-texto-secundario);
+    font-size: var(--texto-pequeno);
+}
+
+/* ---------- Catálogo ---------- */
+
+.filtros-catalogo {
+    margin-bottom: var(--espaco-6);
+    padding: var(--espaco-4);
+    border: var(--borda-fina);
+    border-radius: var(--raio-medio);
+    background-color: var(--cor-superficie);
+}
+
+.filtros-catalogo > div:last-child {
+    margin-bottom: 0;
+}
+
+.lista-produtos {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--espaco-4);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.lista-produtos__vazio {
+    grid-column: 1 / -1;
+}
+
+.cartao-produto {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    padding: var(--espaco-4);
+    border: var(--borda-fina);
+    border-radius: var(--raio-medio);
+    background-color: var(--cor-superficie);
+}
+
+.cartao-produto:hover,
+.cartao-produto:focus-within {
+    border-color: var(--cor-borda);
+}
+
+.cartao-produto__nome {
+    margin: 0;
+    font-size: var(--texto-titulo-cartao);
+    line-height: 1.3;
+}
+
+.cartao-produto__nome a {
+    display: flex;
+    align-items: center;
+    min-height: var(--alvo-minimo);
+    color: var(--cor-texto);
+    text-decoration: none;
+}
+
+.cartao-produto__nome a:hover {
+    color: var(--cor-primaria);
+    text-decoration: underline;
+}
+
+.etiqueta-categoria {
+    align-self: flex-start;
+    margin: var(--espaco-1) 0 var(--espaco-3);
+    padding: 0 var(--espaco-2);
+    border-radius: var(--raio-pequeno);
+    color: var(--cor-primaria);
+    background-color: var(--cor-sucesso-fundo);
+    font-size: var(--texto-pequeno);
+    font-weight: 600;
+}
+
+.cartao-produto__preco {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 0 var(--espaco-2);
+    margin: 0 0 var(--espaco-4);
+}
+
+.preco {
+    color: var(--cor-texto);
+    font-size: var(--texto-preco);
+    font-weight: 700;
+    line-height: 1.2;
+}
+
+.preco--destaque {
+    font-size: var(--texto-preco-destaque);
+}
+
+.cartao-produto__unidade {
+    color: var(--cor-texto-secundario);
+    font-size: var(--texto-pequeno);
+}
+
+/* Quantidade e botão na mesma linha; o botão desce se o cartão estreitar. */
+.form-compra {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    gap: var(--espaco-2);
+    margin-top: auto;
+}
+
+.form-compra__quantidade {
+    flex: 0 0 5.5rem;
+}
+
+.form-compra__quantidade label {
+    display: block;
+    margin-bottom: var(--espaco-1);
+    font-size: var(--texto-pequeno);
+}
+
+.form-compra button {
+    flex: 1 1 12rem;
+}
+
+/* ---------- Detalhes do produto ---------- */
+
+.link-voltar {
+    margin: 0 0 var(--espaco-4);
+}
+
+.produto-detalhe {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--espaco-5);
+    max-width: 64rem;
+}
+
+.produto-detalhe h1 {
+    margin-bottom: var(--espaco-4);
+}
+
+.produto-detalhe__dados {
+    display: grid;
+    grid-template-columns: minmax(0, max-content) minmax(0, 1fr);
+    gap: var(--espaco-2) var(--espaco-5);
+    max-width: var(--largura-formulario);
+    margin: 0;
+    padding: var(--espaco-4);
+    border: var(--borda-fina);
+    border-radius: var(--raio-medio);
+    background-color: var(--cor-superficie);
+}
+
+.produto-detalhe__dados dt {
+    color: var(--cor-texto-secundario);
+    font-weight: 600;
+}
+
+.produto-detalhe__dados dd {
+    margin: 0;
+}
+
+.painel-compra {
+    padding: var(--espaco-5);
+    border: var(--borda-fina);
+    border-top: var(--espessura-marcador) solid var(--cor-primaria);
+    border-radius: var(--raio-medio);
+    background-color: var(--cor-superficie);
+}
+
+.painel-compra__preco {
+    display: flex;
+    flex-direction: column;
+    margin: 0 0 var(--espaco-4);
+}
+
+.painel-compra__rotulo {
+    color: var(--cor-texto-secundario);
+    font-size: var(--texto-pequeno);
+    font-weight: 600;
+}
+
+.form-painel > div {
+    margin-bottom: var(--espaco-4);
+}
+
+.form-painel label {
+    display: block;
+    margin-bottom: var(--espaco-1);
+}
+
+.form-painel input:not([type="hidden"]) {
+    max-width: 8rem;
+}
+
+.form-painel button {
+    width: 100%;
+}
+
+/* ---------- Resumos (dl) ---------- */
+
+.resumo-pedido {
+    display: grid;
+    grid-template-columns: minmax(0, max-content) minmax(0, 1fr);
+    gap: var(--espaco-2) var(--espaco-5);
+    max-width: 40rem;
+    margin: 0 0 var(--espaco-5);
+    padding: var(--espaco-4);
+    border: var(--borda-fina);
+    border-radius: var(--raio-medio);
+    background-color: var(--cor-superficie);
+}
+
+.resumo-pedido dt {
+    color: var(--cor-texto-secundario);
+    font-weight: 600;
+}
+
+.resumo-pedido dd {
+    margin: 0;
+}
+
+.resumo-carrinho {
+    padding: var(--espaco-4);
+    border: var(--borda-fina);
+    border-radius: var(--raio-medio);
+    background-color: var(--cor-superficie);
+}
+
+.resumo-carrinho p {
+    margin: 0 0 var(--espaco-2);
+}
+
+.resumo-carrinho .acao-principal > a {
+    width: 100%;
+}
+
+.layout-duas-colunas {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--espaco-5);
+    margin-bottom: var(--espaco-5);
+}
+
+/* ---------- Tabelas ----------
+ * Em telas estreitas, cada linha vira um cartão: as células mostram o rótulo da
+ * coluna (data-label) e os papéis ARIA explícitos preservam a semântica de tabela,
+ * que alguns navegadores descartam quando o display deixa de ser table.
+ */
+
+.tabela {
+    display: block;
     width: 100%;
     border-collapse: collapse;
 }
 
-.tabela-carrinho th,
-.tabela-carrinho td {
-    padding: 0.75rem 0.5rem;
-    border-bottom: 1px solid #64766a;
-    text-align: left;
-    vertical-align: top;
+.tabela thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
 }
 
-.aviso-carrinho {
-    padding: 1rem;
-    border: 1px solid #a12121;
-    color: #a12121;
-    background-color: #fbeaea;
+.tabela tbody,
+.tabela tr {
+    display: block;
+}
+
+.tabela tr {
+    margin-bottom: var(--espaco-3);
+    padding: var(--espaco-2) var(--espaco-4);
+    border: var(--borda-fina);
+    border-radius: var(--raio-medio);
+    background-color: var(--cor-superficie);
+}
+
+.tabela td {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: var(--espaco-1) var(--espaco-4);
+    padding: var(--espaco-2) 0;
+    border-bottom: var(--borda-fina);
+}
+
+.tabela td:last-child {
+    border-bottom: 0;
+}
+
+.tabela td[data-label]::before {
+    content: attr(data-label);
+    content: attr(data-label) / "";
+    color: var(--cor-texto-secundario);
+    font-weight: 600;
+}
+
+.tabela .celula-titulo {
+    display: block;
+    font-weight: 600;
+}
+
+.tabela .celula-bloco,
+.tabela .celula-acao {
+    display: block;
+}
+
+.acoes-estado {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--espaco-3);
+    margin-bottom: var(--espaco-5);
+}
+
+.acoes-estado--perigo {
+    padding-top: var(--espaco-5);
+    border-top: var(--borda-fina);
 }
 
 .form-estado {
-    display: inline-block;
-    margin: 0 0.5rem 0.5rem 0;
+    margin: 0;
+}
+
+/* ---------- 40rem: duas colunas no catálogo e tabelas tabulares ---------- */
+
+@media (min-width: 40rem) {
+    .lista-produtos {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    /* Pesquisa e categoria lado a lado; ações na linha seguinte. */
+    .filtros-catalogo {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        align-items: end;
+        gap: var(--espaco-4);
+    }
+
+    .filtros-catalogo > div {
+        margin-bottom: 0;
+    }
+
+    .filtros-catalogo > .errorlist,
+    .filtros-catalogo > .acoes-formulario {
+        grid-column: 1 / -1;
+    }
+
+    /* Na tabela, o cabeçalho "Quantidade" já identifica a coluna: o rótulo do campo
+       continua associado e lido, mas deixa de ser exibido. */
+    .tabela .rotulo-quantidade-carrinho {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        margin: -1px;
+        padding: 0;
+        overflow: hidden;
+        clip-path: inset(50%);
+        white-space: nowrap;
+        border: 0;
+    }
+
+    .tabela-responsiva {
+        overflow-x: auto;
+        margin-bottom: var(--espaco-5);
+        border: var(--borda-fina);
+        border-radius: var(--raio-medio);
+        background-color: var(--cor-superficie);
+    }
+
+    .tabela {
+        display: table;
+    }
+
+    .tabela thead {
+        position: static;
+        display: table-header-group;
+        width: auto;
+        height: auto;
+        overflow: visible;
+        clip-path: none;
+        white-space: normal;
+    }
+
+    .tabela tbody {
+        display: table-row-group;
+    }
+
+    .tabela tr {
+        display: table-row;
+        margin: 0;
+        padding: 0;
+        border: 0;
+        background-color: transparent;
+    }
+
+    .tabela th,
+    .tabela td,
+    .tabela .celula-titulo,
+    .tabela .celula-bloco,
+    .tabela .celula-acao {
+        display: table-cell;
+        padding: var(--espaco-3);
+        border-bottom: var(--borda-fina);
+        text-align: left;
+        vertical-align: top;
+    }
+
+    .tabela td:last-child {
+        border-bottom: var(--borda-fina);
+    }
+
+    .tabela tbody tr:last-child td {
+        border-bottom: 0;
+    }
+
+    .tabela th {
+        color: var(--cor-texto-secundario);
+        font-size: var(--texto-pequeno);
+        border-bottom: 2px solid var(--cor-borda);
+    }
+
+    .tabela td[data-label]::before {
+        content: none;
+    }
+
+    .tabela .celula-titulo {
+        min-width: 10rem;
+        font-weight: 400;
+    }
+
+    .resumo-carrinho {
+        max-width: var(--largura-formulario);
+    }
+}
+
+/* ---------- 64rem: cabeçalho em linha e layouts de duas colunas ---------- */
+
+@media (min-width: 64rem) {
+    .cabecalho__interno,
+    .conteudo,
+    .rodape {
+        padding-inline: var(--espaco-6);
+    }
+
+    /* Em linha: marca e navegação principal à esquerda, conta à direita; quebra se faltar espaço. */
+    .cabecalho__interno {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        column-gap: var(--espaco-6);
+    }
+
+    .nav-principal ul {
+        flex-wrap: nowrap;
+    }
+
+    .nav-conta--larga {
+        display: block;
+        margin-left: auto;
+    }
+
+    .nav-conta--larga .nav-conta__usuario {
+        max-width: 14rem;
+    }
+
+    .menu-movel {
+        display: none;
+    }
+
+    .lista-produtos {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+
+    .filtros-catalogo {
+        grid-template-columns: minmax(0, 2fr) minmax(0, 1fr) auto;
+    }
+
+    .filtros-catalogo > .acoes-formulario {
+        grid-column: auto;
+        min-height: var(--alvo-minimo);
+    }
+
+    .produto-detalhe {
+        grid-template-columns: minmax(0, 1fr) var(--largura-coluna-lateral);
+        align-items: start;
+    }
+
+    .layout-duas-colunas {
+        grid-template-columns: minmax(0, 1fr) var(--largura-coluna-lateral);
+        align-items: start;
+    }
+
+    /* O carrinho tem formulários na tabela: só ganha a coluna lateral a partir de 80rem. */
+    .layout-duas-colunas--larga {
+        grid-template-columns: minmax(0, 1fr);
+    }
+}
+
+/* ---------- 80rem: catálogo com até quatro colunas ---------- */
+
+@media (min-width: 80rem) {
+    .lista-produtos {
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
+
+    .layout-duas-colunas--larga {
+        grid-template-columns: minmax(0, 1fr) var(--largura-coluna-lateral);
+    }
+
+    .layout-duas-colunas--larga .resumo-carrinho {
+        max-width: none;
+    }
 }

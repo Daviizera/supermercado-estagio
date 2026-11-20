@@ -22,6 +22,15 @@ from .forms import (
 )
 from .models import EstadoPedido, Pedido, Produto
 
+# Verbos exibidos nos botões do painel; o valor enviado continua sendo o estado de destino.
+ROTULOS_ACOES_EQUIPE = {
+    EstadoPedido.CONFIRMADO: 'Confirmar pedido',
+    EstadoPedido.EM_PREPARO: 'Iniciar preparo',
+    EstadoPedido.SAIU_PARA_ENTREGA: 'Registrar saída para entrega',
+    EstadoPedido.ENTREGUE: 'Concluir entrega',
+    EstadoPedido.CANCELADO: 'Cancelar pedido',
+}
+
 MENSAGEM_PEDIDO_NAO_ENCONTRADO = 'Pedido não encontrado ou acesso não permitido.'
 MENSAGEM_ENTRE_PARA_PEDIDOS = 'Entre para consultar seus pedidos.'
 MENSAGEM_PRODUTO_INDISPONIVEL = 'Este produto não está disponível.'
@@ -388,7 +397,10 @@ def equipe_pedido_detalhe(request, pk):
     # Os botões são conveniência; a rota de alteração revalida permissão e transição.
     if servico_pedidos.pode_alterar(request.user):
         acoes = [
-            {'estado': estado, 'rotulo': EstadoPedido(estado).label}
+            {
+                'estado': estado, 'rotulo': ROTULOS_ACOES_EQUIPE[estado],
+                'perigo': estado == EstadoPedido.CANCELADO,
+            }
             for estado in servico_pedidos.transicoes_permitidas(pedido.estado)
         ]
     return render(request, 'principal/equipe_pedido_detalhe.html', {
