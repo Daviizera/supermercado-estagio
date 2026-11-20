@@ -1,108 +1,142 @@
 # Sistema de Pedidos Online — Supermercado
 
-Projeto acadêmico de estágio em desenvolvimento web: um sistema de pedidos online para supermercado com entrega. A aplicação contém a fundação local em Django e a página inicial mínima da **Semana 1**. A **Semana 2** acrescenta a documentação de escopo, requisitos, fluxos e protótipos. A **Semana 3** implementa a modelagem de dados e o cadastro interno de categorias e produtos pelo Django Admin. A **Semana 4** acrescenta cadastro, login, logout e uma área autenticada mínima para clientes. A **Semana 5** oferece o catálogo público de produtos ativos, com pesquisa, filtro por categoria e detalhes. A **Semana 6** acrescenta o carrinho de compras da sessão, com quantidades, remoção de itens e subtotal calculado no servidor. A **Semana 7** implementa a finalização da compra: endereço, bairro atendido, taxa fixa, limite de valor, revisão dos valores e registro atômico e idempotente do pedido, com pagamento na entrega. A **Semana 8** oferece o painel próprio de gerenciamento de pedidos para a equipe autorizada, com as transições de estado documentadas, e a consulta e o acompanhamento dos próprios pedidos pelos clientes. A **Semana 9** audita a aplicação e a suíte automatizada, corrige as falhas encontradas e registra os resultados dos testes.
+Projeto acadêmico de estágio em desenvolvimento web: um sistema de pedidos online para
+supermercado com entrega, construído como monólito Django com renderização no servidor.
 
-As etapas seguintes do plano de estágio continuam previstas para as próximas semanas.
+Funcionalidades implementadas:
+
+- **Catálogo público:** produtos ativos, com pesquisa que ignora maiúsculas e acentos, filtro por
+  categoria e página de detalhes.
+- **Carrinho:** fica na sessão, com valores calculados no servidor.
+- **Contas de cliente:** cadastro, login e logout; senha com no mínimo 12 caracteres e limitação
+  de tentativas de login.
+- **Finalização da compra:** endereço, bairro atendido, taxa fixa de entrega e pagamento
+  exclusivamente na entrega; o pedido é registrado de forma atômica e sem duplicidade.
+- **Acompanhamento:** consulta dos próprios pedidos pelo cliente.
+- **Gerenciamento:** painel da equipe autorizada para atualizar os estados dos pedidos.
+
+A interface é responsiva, com cuidados de acessibilidade. A suíte automatizada tem 418 testes.
+
+O README registra abaixo o estado atual e, em seguida, o histórico de cada semana do plano de
+estágio. **Neste ambiente acadêmico, o catálogo, o bairro e a taxa de entrega usados na
+demonstração são fictícios.**
+
+## Documentação de uso
+
+| Documento | Conteúdo |
+| --- | --- |
+| [Manual do cliente](docs/semana-12/manual-cliente.md) | Catálogo, carrinho, compra e acompanhamento do pedido. |
+| [Manual da equipe interna](docs/semana-12/manual-equipe.md) | Gerenciamento de pedidos, estados e permissões. |
+| [Manual de instalação e execução](docs/semana-12/manual-instalacao.md) | Instalação em desenvolvimento, testes e diferenças para a produção. |
+| [Apresentação do sistema](docs/semana-12/apresentacao-sistema.md) | Estrutura dos slides, com textos, imagens e notas. |
+| [Revisão da documentação](docs/semana-12/revisao-documentacao.md) | Índice dos documentos e divergências entre os registros semanais e o estado atual. |
+| [Validação e testes-piloto](docs/semana-11/validacao-testes-piloto.md) | Dados demonstrativos, instalação limpa, testes-piloto e demonstração manual. |
 
 ## Pré-requisitos
 
 - Windows com PowerShell.
-- Python 3.14 instalado e disponível pelo comando `python` (ambiente inicial validado com Python 3.14.7).
-- Git instalado e disponível pelo comando `git`.
+- Python 3.14, disponível pelo comando `python` (validado com Python 3.14.7).
+- Git, disponível pelo comando `git`.
 
-O projeto utiliza Django 5.2 LTS; as versões instaladas estão fixadas em `requirements.txt`.
+O projeto utiliza Django 5.2 LTS (5.2.19). As versões das dependências estão fixadas em
+`requirements.txt`.
 
 ## Instalação e execução
 
-Clone o repositório do projeto e prepare o ambiente local:
+O procedimento completo, com a criação da conta da equipe e a solução de problemas comuns, está
+no [manual de instalação](docs/semana-12/manual-instalacao.md). Resumo:
 
 ```powershell
 git clone https://github.com/Daviizera/supermercado-estagio.git
 cd supermercado-estagio
 python -m venv .venv
 .\.venv\Scripts\Activate.ps1
-pip install -r requirements.txt
+python -m pip install -r requirements.txt
+$env:DJANGO_ENV = "development"
 python manage.py migrate
+python manage.py preparar_dados_demonstracao
 python manage.py runserver
 ```
 
-Abra <http://127.0.0.1:8000/>. A página deve exibir “Sistema de Pedidos Online”, “Supermercado” e “Projeto de estágio em desenvolvimento web”. Encerre o servidor com `Ctrl+C`.
+Abra <http://127.0.0.1:8000/> e encerre o servidor com `Ctrl+C`.
 
-Se o PowerShell bloquear a ativação, use diretamente o Python do ambiente virtual, sem alterar a política de execução:
-
-```powershell
-.\.venv\Scripts\python.exe -m pip install -r requirements.txt
-.\.venv\Scripts\python.exe manage.py migrate
-.\.venv\Scripts\python.exe manage.py runserver
-```
+- **Ambiente obrigatório:** `DJANGO_ENV` precisa estar definido como `development` em cada janela
+  do PowerShell. Sem ele, os comandos são interrompidos com `ImproperlyConfigured`.
+- **Política de execução:** se o PowerShell bloquear a ativação, use diretamente
+  `.\.venv\Scripts\python.exe` no lugar de `python`.
 
 ## Verificação
 
-Com o ambiente virtual ativado, execute:
+Com o ambiente ativo e `DJANGO_ENV` definido:
 
 ```powershell
+python -W default manage.py test
 python manage.py check
-python manage.py migrate
-python manage.py test
+python manage.py makemigrations --check --dry-run
+python -m pip check
 ```
 
-Sem ativação, substitua `python` por `.\.venv\Scripts\python.exe` nesses comandos.
+Resultado atual:
+
+- `test`: 418 testes aprovados, sem avisos;
+- `check`: nenhum problema;
+- `makemigrations --check --dry-run`: nenhuma migration pendente;
+- `pip check`: nenhum conflito de dependências.
+
+Os testes usam um banco temporário e não alteram o `db.sqlite3`.
 
 ## Estrutura e configuração
 
 ```text
 manage.py
-supermercado/                 # Configuração do projeto Django
-principal/                   # Página inicial, autenticação, catálogo, carrinho, checkout, modelos e Admin
+supermercado/
+    settings.py              # Configuração central (ambientes, segurança, entrega, limite de login)
+    ambiente.py              # Leitura e validação das variáveis de ambiente
+principal/
+    models.py, views.py, forms.py, admin.py, urls.py, apps.py
     carrinho.py              # Carrinho da sessão e cálculo dos valores
     checkout.py              # Finalização da compra e registro atômico dos pedidos
     pedidos.py               # Permissões e transições de estado dos pedidos
-    forms.py                 # Filtros do catálogo, quantidades e dados de entrega
-    migrations/0001_initial.py
-    migrations/0002_pedido_chave_idempotencia.py
-    migrations/0003_preencher_chave_idempotencia.py
-    migrations/0004_alter_pedido_chave_idempotencia.py
-    test_auth.py
-    test_catalogo.py
-    test_carrinho.py
-    test_checkout.py
-    test_pedidos.py
-    test_seguranca.py
-docs/semana-02/               # Requisitos, regras, fluxos e protótipos
-docs/semana-03/               # Documentação da modelagem de dados
-docs/semana-04/               # Documentação da autenticação de clientes
-docs/semana-05/               # Documentação do catálogo público
-docs/semana-06/               # Documentação do carrinho de compras
-docs/semana-07/               # Documentação da finalização da compra
-docs/semana-08/               # Documentação do gerenciamento de pedidos
-docs/semana-09/               # Relatório de testes e correção de falhas
-templates/
-    base.html
-    principal/inicio.html
-    principal/minha_conta.html
-    principal/catalogo.html
-    principal/detalhe_produto.html
-    principal/carrinho.html
-    principal/checkout.html
-    principal/confirmacao_pedido.html
-    principal/meus_pedidos.html
-    principal/equipe_pedidos.html
-    principal/equipe_pedido_detalhe.html
-    principal/acesso_negado.html
-    principal/pedido_nao_encontrado.html
-    registration/cadastro.html
-    registration/login.html
+    busca.py                 # Busca e ordenação sem diferenciar maiúsculas e acentos
+    limite_login.py          # Limitação de tentativas de login (site e Django Admin)
+    management/commands/preparar_dados_demonstracao.py
+    migrations/0001 a 0004
+    test_*.py, tests.py      # 418 testes automatizados
+templates/                   # base.html, principal/*.html e registration/*.html
 static/css/estilos.css
+docs/semana-02/ a docs/semana-12/
 requirements.txt
 .gitignore
 README.md
 ```
 
-A rota `/` renderiza um template Django, com CSS mínimo servido pelos arquivos estáticos em desenvolvimento.
+O banco SQLite fica em `db.sqlite3`, na raiz, e é criado pelas migrations. Esse arquivo, o
+ambiente `.venv`, a chave local `.chave-secreta-local` e os caches são ignorados pelo Git.
 
-O banco SQLite fica em `db.sqlite3`, na raiz, e é criado pelas migrations. Não exige instalação de servidor de banco. Esse arquivo, o ambiente `.venv` e os caches locais são ignorados pelo Git.
+**Ambientes.** A variável `DJANGO_ENV` é obrigatória e aceita somente `development` ou
+`production`.
 
-A infraestrutura padrão do Django fornece a autenticação e as permissões do cadastro interno em `/admin/`. A página pública continua mínima. A configuração é exclusivamente de desenvolvimento local, com `DEBUG = True` e chave de desenvolvimento definida no projeto; nenhum arquivo `.env` é necessário nesta etapa.
+- **Desenvolvimento:**
+  - `DEBUG` ativado e hosts locais;
+  - chave secreta lida de `DJANGO_SECRET_KEY` ou de um arquivo local gerado automaticamente;
+  - bairro "Bairro Ficticio de Teste" e taxa de R$ 5,00 apenas para demonstração.
+- **Produção:** exige `DJANGO_SECRET_KEY`, `DJANGO_ALLOWED_HOSTS`, HTTPS e um cache compartilhado
+  para a limitação de login. Nunca usa os valores fictícios de entrega.
+
+Nenhuma chave secreta fica no código. Os detalhes estão na seção 14 do
+[manual de instalação](docs/semana-12/manual-instalacao.md#14-segurança-desenvolvimento-e-produção).
+
+## Histórico por semana
+
+As seções a seguir registram o que foi entregue e validado ao final de cada semana. Algumas
+afirmações foram superadas pelas semanas seguintes, por exemplo:
+
+- a configuração de entrega, a chave de desenvolvimento e a limitação da busca com acentos;
+- as contagens de testes, que valem para a semana em que foram registradas.
+
+Quando houver divergência, prevalecem as seções anteriores deste README e os documentos da
+Semana 12. A [revisão da documentação](docs/semana-12/revisao-documentacao.md) lista as
+divergências conhecidas.
 
 ## Semana 2 — Escopo, requisitos e protótipos
 
@@ -134,6 +168,8 @@ Após atualizar os arquivos, aplique as migrations existentes e execute as verif
 ```
 
 Os testes usam um banco temporário do Django, incluindo os usuários necessários às verificações. Não é necessário criar um usuário no banco local para executá-los.
+
+> **Atualização (Semanas 11 e 12):** os comandos desta seção exigem `$env:DJANGO_ENV = "development"`. Para a operação de pedidos, use uma conta da equipe com as permissões específicas ([manual de instalação](docs/semana-12/manual-instalacao.md#9-conta-da-equipe)), não um superusuário.
 
 Para utilizar o cadastro interno manualmente, crie seu próprio superusuário local pelo comando interativo padrão e inicie o servidor:
 
@@ -179,6 +215,8 @@ Visitantes e clientes autenticados podem abrir <http://127.0.0.1:8000/catalogo/>
 Use o campo de pesquisa para buscar parte do nome e selecione uma categoria para combinar os filtros. Limpar apenas o texto mantém a categoria; selecionar **Todas as categorias** remove apenas esse filtro. O link **Limpar filtros** retorna ao catálogo completo. As consultas usam GET e não alteram os produtos.
 
 A busca usa `icontains` do Django: ignora diferenças entre maiúsculas e minúsculas em caracteres ASCII, mas o SQLite possui limitações para caracteres fora desse conjunto e não há remoção de acentos. Categoria inexistente ou inválida e pesquisa com mais de 150 caracteres mostram erro de validação, sem listar produtos. Os detalhes dessas decisões estão na [documentação do catálogo](docs/semana-05/catalogo-produtos.md).
+
+> **Atualização (Semana 11):** a busca passou a ignorar acentos e maiúsculas também em letras acentuadas, e a ordenação agrupa "Água" com a letra A (F-01/F-02).
 
 Os produtos são os mesmos mantidos pelo Django Admin da Semana 3. Alterações de nome, preço, unidade, categoria e disponibilidade aparecem nas consultas seguintes. Nenhum dado comercial de demonstração é criado automaticamente; se não houver produtos ativos, a página informa **“Nenhum produto disponível no momento.”**.
 
@@ -232,6 +270,8 @@ A entrega é configurada somente em `supermercado/settings.py`:
 
 **Com essa configuração, o checkout permanece bloqueado** com a mensagem “A entrega ainda não está disponível.” até que bairros e taxa sejam fornecidos. Nenhum bairro ou valor fictício foi definido; os testes usam valores próprios apenas durante a execução.
 
+> **Atualização (Semana 11):** em `DJANGO_ENV=development`, o checkout usa o bairro demonstrativo "Bairro Ficticio de Teste" e a taxa de R$ 5,00; em produção, os valores continuam vazios e o checkout permanece bloqueado até a definição de valores reais. A `SECRET_KEY` deixou de ficar no código (ver [Estrutura e configuração](#estrutura-e-configuração)).
+
 O pedido é criado em uma única transação, com `full_clean()` antes de salvar `Pedido` e cada `ItemPedido`, que guarda nome, unidade e preço do produto no momento da compra. Produtos inativos ou excluídos, entradas inconsistentes no carrinho, bairro não atendido, endereço incompleto e total acima do limite impedem o pedido e preservam o carrinho. Se nome, unidade, preço, itens, valores, taxa ou bairros configurados mudarem desde a revisão, os dados atualizados são apresentados e uma nova confirmação é exigida. Uma chave de idempotência UUID derivada no servidor do usuário e do último pedido, única no banco, impede pedidos duplicados em reenvios e em páginas de checkout abertas em paralelo; uma base que não gerou pedido só é aceita se for o último pedido atual do usuário, mesmo em token assinado; compras simultâneas do mesmo usuário iniciadas antes de qualquer conclusão contam como uma única tentativa. A `SECRET_KEY` do repositório é pública e de desenvolvimento; em produção, deve ser privada e fornecida por variável de ambiente. Após o sucesso, somente o carrinho é removido da sessão; a autenticação é mantida. O carrinho também oferece a remoção explícita dos registros não identificados.
 
 Foram acrescentadas as migrations `0002` a `0004`, que adicionam e preenchem `Pedido.chave_idempotencia` em etapas seguras para pedidos preexistentes. Detalhes, decisões provisórias e pendências estão na [documentação da finalização](docs/semana-07/finalizacao-compra.md).
@@ -282,3 +322,62 @@ Foram acrescentados testes de escape de HTML, mascaramento de senhas em relatór
 ```
 
 Na validação da Semana 9, os **293 testes passaram** sem avisos: 273 anteriores e 20 novos. `check`, `makemigrations --check --dry-run`, `pip check` e `git diff --check` não apontaram problemas. Continuam pendentes do supervisor D-001 a D-004, o limite provisório de R$ 5.000,00 e produtos com preço zero; os avisos de `check --deploy` ficam para a implantação.
+
+## Semana 10 — Interface, responsividade e acessibilidade
+
+A Semana 10 reorganizou a identidade visual com variáveis de CSS e pontos de quebra
+mobile-first (40, 64 e 80 rem).
+
+- **Tabelas:** viram cartões em telas estreitas, mantendo a semântica para leitores de tela.
+- **Navegação móvel:** os itens da conta ficam no botão **Menu**.
+- **Acessibilidade:**
+  - link "Pular para o conteúdo" e indicação da página atual;
+  - foco visível e áreas de toque de pelo menos 44 px;
+  - mensagens diferenciadas por tipo;
+  - nomes acessíveis nos botões repetidos.
+- **Catálogo e detalhes do produto:** foram redesenhados.
+- **Validação:** as medições foram feitas no Chrome com emulação real de viewport, em 360, 390,
+  768, 1024 e 1440 px. Não se declara conformidade formal com a WCAG.
+
+## Semana 11 — Segurança, dados demonstrativos e testes-piloto
+
+**Segurança.**
+
+- **Chave secreta:** a chave secreta exposta no histórico foi substituída e é recusada; nenhuma
+  chave fica no código.
+- **Ambientes:** a variável `DJANGO_ENV` passou a ser obrigatória e separa desenvolvimento de
+  produção.
+- **Login:** limitação de tentativas no site e no Django Admin; a produção exige cache
+  compartilhado.
+- **Senhas:** mínimo de 12 caracteres.
+- **Dependências:** Django atualizado para 5.2.19.
+
+**Dados e validação.** O comando `preparar_dados_demonstracao` cria 4 categorias e 18 produtos
+fictícios, de forma idempotente e somente em desenvolvimento. A finalização da compra usa, apenas
+em desenvolvimento, o bairro "Bairro Ficticio de Teste" e a taxa de R$ 5,00.
+
+**Correções.** A busca e a ordenação com acentos foram corrigidas (falhas F-01 e F-02 do piloto).
+
+**Registros.**
+
+- A instalação limpa foi validada duas vezes.
+- Os testes-piloto, a inspeção por HTTP real e a demonstração manual relatada pelo usuário estão
+  em [validacao-testes-piloto.md](docs/semana-11/validacao-testes-piloto.md).
+
+```powershell
+$env:DJANGO_ENV = "development"
+.\.venv\Scripts\python.exe -W default manage.py test
+```
+
+Na validação final da Semana 11, os **418 testes passaram** sem avisos.
+
+## Semana 12 — Documentação, manuais e apresentação
+
+A Semana 12 produziu os documentos listados em [Documentação de uso](#documentação-de-uso):
+
+- os manuais do cliente, da equipe e de instalação, com capturas reais do sistema em
+  `docs/semana-12/imagens/`;
+- a estrutura da apresentação;
+- a revisão da documentação existente.
+
+Não houve alteração de código, modelos, migrations, configurações ou dependências.
